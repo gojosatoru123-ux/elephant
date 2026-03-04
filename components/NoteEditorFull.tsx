@@ -13,6 +13,7 @@ import { useNoteExport } from "@/hooks/useNoteExport";
 import { Template } from "@/data/templates";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SyncStatusIndicator } from "./SyncStatusIndicator";
 
 interface NoteEditorFullProps {
   note: Note;
@@ -189,6 +190,7 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />
               <span>Updated {format(new Date(note.updatedAt), "MMM d, h:mm a")}</span>
+              <SyncStatusIndicator />
             </div>
           </div>
           <div className="flex items-center gap-1">

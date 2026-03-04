@@ -1,96 +1,166 @@
-// StorageEngine.ts
-
 import { Folder, NoteBlock, NoteIndex } from "./types";
+import { GoogleDriveSync, DriveFileMetadata } from "./GoogleDriveSync";
 
 const INDEXES_FILE = "note-indexes-nickblake.json";
 const FOLDERS_FILE = "folders-nickblake.json";
 const NOTES_DIR = "notes";
 
-/**
- * UTILITY: Get the Origin Private File System root
- */
-const getRoot = () => navigator.storage.getDirectory();
+export type SyncStatus = "synced" | "syncing" | "error" | "offline";
+let statusListener: ((status: SyncStatus) => void) | null = null;
 
-/**
- * DEBOUNCE CACHE: Stores timeout IDs for each unique file
- */
+// Temporary in-memory cache for this session's Drive IDs
+const driveIdCache: Record<string, string> = {};
 const saveTimeouts: Record<string, any> = {};
 
+const getRoot = () => navigator.storage.getDirectory();
+
 export const StorageEngine = {
-    /**
-     * INTERNAL: Handles the debounced asynchronous writing to disk.
-     * @param fileName - The name of the file or Note ID
-     * @param data - The object to stringify and save
-     * @param isNoteContent - If true, saves into the /notes directory
-     */
-    async _writeFile(fileName: string, data: any, isNoteContent: boolean = false) {
-        const key = isNoteContent ? `note_${fileName}` : fileName;
+    onStatusChange(callback: (status: SyncStatus) => void) {
+        statusListener = callback;
+    },
 
-        // Clear existing timeout to reset the debounce timer
-        if (saveTimeouts[key]) clearTimeout(saveTimeouts[key]);
+    _updateStatus(status: SyncStatus) {
+        if (statusListener) statusListener(status);
+    },
 
-        saveTimeouts[key] = setTimeout(async () => {
+    async init() {
+        if (navigator.onLine) {
+            this._updateStatus("syncing");
+            // Discovery-based boot: Look for metadata files directly on Drive
+            await this.bootstrapMetadata();
+            this._updateStatus("synced");
+        } else {
+            this._updateStatus("offline");
+        }
+    },
+
+    async bootstrapMetadata() {
+        const metaFiles = [INDEXES_FILE, FOLDERS_FILE];
+        for (const fileName of metaFiles) {
+            const cloudFile = await GoogleDriveSync.findFileByName(fileName);
+            if (cloudFile) {
+                driveIdCache[fileName] = cloudFile.id;
+                const data = await GoogleDriveSync.downloadFile(cloudFile.id);
+                await this._saveToLocal(fileName, data, false);
+            }
+        }
+    },
+
+    async loadWithCloudSync<T>(id: string, onConflict: (id: string) => void): Promise<T> {
+        const isNote = !id.includes('nickblake');
+        const driveName = isNote ? `${id}.json` : id;
+
+        if (navigator.onLine) {
+            this._updateStatus("syncing");
             try {
-                const root = await getRoot();
-                let fileHandle: FileSystemFileHandle;
-
-                if (isNoteContent) {
-                    const dir = await root.getDirectoryHandle(NOTES_DIR, { create: true });
-                    fileHandle = await dir.getFileHandle(`${fileName}.json`, { create: true });
-                } else {
-                    fileHandle = await root.getFileHandle(fileName, { create: true });
+                // Discover file ID if not in cache
+                let driveId = driveIdCache[id];
+                if (!driveId) {
+                    const found = await GoogleDriveSync.findFileByName(driveName);
+                    if (found) {
+                        driveId = found.id;
+                        driveIdCache[id] = driveId;
+                    }
                 }
 
-                const writable = await fileHandle.createWritable();
-                await writable.write(JSON.stringify(data));
-                await writable.close();
+                if (driveId) {
+                    const cloudData = await GoogleDriveSync.downloadFile(driveId);
+                    await this._saveToLocal(id, cloudData, isNote);
+                    this._updateStatus("synced");
+                    return cloudData as T;
+                }
+            } catch { this._updateStatus("error"); }
+        }
 
-                delete saveTimeouts[key];
-                console.log(`[StorageEngine] Saved: ${key}`);
-            } catch (error) {
-                console.error(`[StorageEngine] Failed to save ${key}:`, error);
+        this._updateStatus("synced");
+        if (id === FOLDERS_FILE) return (await this.loadFolders()) as T;
+        if (id === INDEXES_FILE) return (await this.loadIndexes()) as T;
+        return (await this.loadNoteBlocks(id)) as T;
+    },
+
+    async _performWrite(fileName: string, data: any, isNote: boolean) {
+        await this._saveToLocal(fileName, data, isNote);
+        if (!navigator.onLine) {
+            this._updateStatus("offline");
+            return;
+        }
+
+        this._updateStatus("syncing");
+        const driveName = isNote ? `${fileName}.json` : fileName;
+
+        try {
+            // Check cache or Discover on Drive to avoid duplicates
+            let driveId = driveIdCache[fileName];
+            if (!driveId) {
+                const found = await GoogleDriveSync.findFileByName(driveName);
+                if (found) driveId = found.id;
             }
-        }, 800); // 800ms debounce window
+
+            const result = await GoogleDriveSync.syncFile(driveName, data, driveId);
+            if (result) {
+                driveIdCache[fileName] = result.id;
+                this._updateStatus("synced");
+            }
+        } catch (error) {
+            console.error("Sync failed:", error);
+            this._updateStatus("error");
+        }
     },
 
-    // --- INDEXES MANAGEMENT ---
-
-    saveIndexesDebounced(indexes: NoteIndex[]) {
-        this._writeFile(INDEXES_FILE, indexes);
+    // UI features & Debouncing preserved
+    _writeFile(fileName: string, data: any, isNote: boolean = false) {
+        if (saveTimeouts[fileName]) clearTimeout(saveTimeouts[fileName]);
+        saveTimeouts[fileName] = setTimeout(() => {
+            this._performWrite(fileName, data, isNote);
+            delete saveTimeouts[fileName];
+        }, 800);
     },
+
+    async _saveToLocal(fileName: string, data: any, isNote: boolean) {
+        const root = await getRoot();
+        let dir = root;
+        if (isNote) dir = await root.getDirectoryHandle(NOTES_DIR, { create: true });
+        const finalName = isNote && !fileName.endsWith('.json') ? `${fileName}.json` : fileName;
+        const handle = await dir.getFileHandle(finalName, { create: true });
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(data));
+        await writable.close();
+    },
+
+    async deleteNoteFile(id: string): Promise<void> {
+        this._updateStatus("syncing");
+        try {
+            const root = await getRoot();
+            const dir = await root.getDirectoryHandle(NOTES_DIR);
+            await dir.removeEntry(`${id}.json`);
+            
+            const driveName = `${id}.json`;
+            const found = await GoogleDriveSync.findFileByName(driveName);
+            if (found) await GoogleDriveSync.deleteFile(found.id);
+            
+            delete driveIdCache[id];
+            this._updateStatus("synced");
+        } catch (e) { this._updateStatus("error"); }
+    },
+
+    saveIndexesDebounced(indexes: NoteIndex[]) { this._writeFile(INDEXES_FILE, indexes, false); },
+    saveFoldersDebounced(folders: Folder[]) { this._writeFile(FOLDERS_FILE, folders, false); },
+    saveNoteBlocksDebounced(id: string, blocks: NoteBlock[]) { this._writeFile(id, blocks, true); },
 
     async loadIndexes(): Promise<NoteIndex[]> {
         try {
             const root = await getRoot();
             const handle = await root.getFileHandle(INDEXES_FILE);
-            const file = await handle.getFile();
-            return JSON.parse(await file.text());
-        } catch {
-            return [];
-        }
-    },
-
-    // --- FOLDERS MANAGEMENT ---
-
-    saveFoldersDebounced(folders: Folder[]) {
-        this._writeFile(FOLDERS_FILE, folders);
+            return JSON.parse(await (await handle.getFile()).text());
+        } catch { return []; }
     },
 
     async loadFolders(): Promise<Folder[]> {
         try {
             const root = await getRoot();
             const handle = await root.getFileHandle(FOLDERS_FILE);
-            const file = await handle.getFile();
-            return JSON.parse(await file.text());
-        } catch {
-            return [];
-        }
-    },
-
-    // --- ATOMIC NOTE CONTENT ---
-
-    saveNoteBlocksDebounced(id: string, blocks: NoteBlock[]) {
-        this._writeFile(id, blocks, true);
+            return JSON.parse(await (await handle.getFile()).text());
+        } catch { return []; }
     },
 
     async loadNoteBlocks(id: string): Promise<NoteBlock[]> {
@@ -98,25 +168,10 @@ export const StorageEngine = {
             const root = await getRoot();
             const dir = await root.getDirectoryHandle(NOTES_DIR);
             const handle = await dir.getFileHandle(`${id}.json`);
-            const file = await handle.getFile();
-            return JSON.parse(await file.text());
-        } catch {
-            // Return a default initial block if the file is not found
-            return [{ id: crypto.randomUUID(), type: "text", content: "" }];
-        }
+            return JSON.parse(await (await handle.getFile()).text());
+        } catch { return [{ id: crypto.randomUUID(), type: "text", content: "" }]; }
     },
 
-    /**
-     * Physically removes the note file from the disk.
-     */
-    async deleteNoteFile(id: string): Promise<void> {
-        try {
-            const root = await getRoot();
-            const dir = await root.getDirectoryHandle(NOTES_DIR);
-            await dir.removeEntry(`${id}.json`);
-            console.log(`[StorageEngine] Deleted file: ${id}.json`);
-        } catch (e) {
-            // File likely doesn't exist locally, ignore
-        }
-    }
+    // Kept for API compatibility, though logic is now Discovery-based
+    async syncDirtyFiles() {} 
 };

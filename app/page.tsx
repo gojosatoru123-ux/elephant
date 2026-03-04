@@ -6,7 +6,8 @@ const  Home=()=> {
   const signinwithgoogle = async ()=>{
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/dashboard"
+      callbackURL: "/dashboard",
+      scopes: ["https://www.googleapis.com/auth/drive.file"],
     })
     // await authClient.linkSocial({
     //   provider: "google",
