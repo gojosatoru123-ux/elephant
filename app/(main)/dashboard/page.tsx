@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { NoteIndex } from "@/lib/types";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 
 const Dashboard = () => {
 
@@ -123,6 +124,8 @@ const Dashboard = () => {
             </motion.div>
           </Link>
         </div>
+        
+        
         {/* Recent Notes */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -131,7 +134,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Clock className="w-5 h-5 text-muted-foreground" />
-              Recent Notes
+              Recent Notes <SyncStatusIndicator />
             </h2>
             <Link
               href="/note/ideas"
