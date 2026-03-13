@@ -1,6 +1,8 @@
-'use client'
+"use client";
+
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { StickyNote, Clock, FolderOpen, Plus, ArrowRight } from "lucide-react";
+import { StickyNote, Clock, FolderOpen, Plus, ArrowRight, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useNotesContext } from "@/contexts/NotesContext";
 import { formatDistanceToNow } from "date-fns";
@@ -8,10 +10,12 @@ import Link from "next/link";
 import { NoteIndex } from "@/lib/types";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
+import { StorageEngine } from "@/lib/storage-engine";
+import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
-
   const router = useRouter();
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const {
     isInitialized,
@@ -41,6 +45,21 @@ const Dashboard = () => {
   const handleQuickNote = () => {
     const noteId = createNoteIndex();
     router.push(`/note/ideas/${noteId}`);
+  };
+
+  const handleManualRestore = async () => {
+    if (isRestoring) return;
+    try {
+      setIsRestoring(true);
+      await StorageEngine.fetchAndRestoreFromCloud();
+      // No need to reload here, the event listener in useNotes 
+      // will pick up the change and update the UI automatically.
+    } catch (error) {
+      console.error("Manual restore failed:", error);
+    } finally {
+      // Give it a tiny delay so the user sees the "Synced" state
+      setTimeout(() => setIsRestoring(false), 500);
+    }
   };
 
   if (!isInitialized) {
@@ -74,7 +93,8 @@ const Dashboard = () => {
             </div>
           </div>
         </motion.div>
-        {/* Stats */}
+
+        {/* Stats & Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {stats.map((stat) => (
             <motion.div
@@ -94,7 +114,7 @@ const Dashboard = () => {
               </p>
             </motion.div>
           ))}
-          {/* Quick Note */}
+          
           <motion.button
             onClick={handleQuickNote}
             whileHover={{ y: -4 }}
@@ -108,7 +128,7 @@ const Dashboard = () => {
               Quick Note
             </p>
           </motion.button>
-          {/* All Notes */}
+
           <Link href="/note/ideas">
             <motion.div
               whileHover={{ y: -4 }}
@@ -125,17 +145,35 @@ const Dashboard = () => {
           </Link>
         </div>
         
-        
-        {/* Recent Notes */}
+        {/* Recent Notes Section */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Clock className="w-5 h-5 text-muted-foreground" />
-              Recent Notes <SyncStatusIndicator />
-            </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                Recent Notes
+              </h2>
+              <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+              <SyncStatusIndicator />
+              
+              {/* Manual Restore Button */}
+              <button 
+                onClick={handleManualRestore}
+                disabled={isRestoring}
+                className={cn(
+                  "p-1.5 rounded-md cursor-pointer hover:bg-muted text-muted-foreground transition-all flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold border border-transparent hover:border-border",
+                  isRestoring && "opacity-50 cursor-not-allowed"
+                )}
+                title="Restore Skeleton from Cloud"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", isRestoring && "animate-spin")} />
+                {isRestoring ? "Restoring..." : "Restore"}
+              </button>
+            </div>
+            
             <Link
               href="/note/ideas"
               className="text-sm text-primary hover:underline"
@@ -143,6 +181,7 @@ const Dashboard = () => {
               View all
             </Link>
           </div>
+
           {recentNoteIndexes.length === 0 ? (
             <div className="bg-card rounded-xl border border-border p-10 text-center flex flex-col items-center">
               <StickyNote className="w-14 h-14 text-muted-foreground/60 mb-4" />

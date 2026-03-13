@@ -6,7 +6,7 @@ const FOLDERS_FILE = "folders-nickblake.json";
 const MANIFEST_FILE = "sync-manifest.json";
 const NOTES_DIR = "notes";
 
-export type SyncStatus = "synced" | "syncing" | "error" | "offline";
+export type SyncStatus = "synced" | "syncing" | "fetching" | "error" | "offline";
 export type SyncProgress = { current: number; total: number };
 
 let statusListener: ((status: SyncStatus) => void) | null = null;
@@ -42,106 +42,79 @@ export const StorageEngine = {
           localManifestExist = false;
         }
 
-        // We resolve the init early so the UI can render from OPFS immediately.
-        console.log("StorageEngine: Local-first initialization complete.");
+        // Resolve status so UI renders local data immediately
         if (statusListener) statusListener("synced");
 
-        // --- PHASE 2: BACKGROUND CLOUD DISCOVERY ---
-        // Do NOT await this. It runs while the user is already using the app.
+        // --- PHASE 2: CLOUD SYNC LOGIC ---
         if (navigator.onLine) {
-          this.runBackgroundCloudDiscovery(localManifestExist);
+          if (!localManifestExist) {
+            // New device: strictly check cloud before creating new local state
+            await this.fetchAndRestoreFromCloud();
+          } else {
+            // Existing device: run background sync for any unsaved local changes
+            this.syncDirtyFiles();
+          }
         }
       } catch (e) {
-        console.error("Critical StorageEngine failure:", e);
+        console.error("StorageEngine init error:", e);
       }
     })();
     return initPromise;
   },
 
-  async runBackgroundCloudDiscovery(localExists: boolean) {
+  /**
+   * Method to fetch the "Skeleton" files from Drive.
+   * Logic: Checks if Drive has data. If yes, pull and reload. If no, setup new user.
+   */
+  async fetchAndRestoreFromCloud() {
+    if (!navigator.onLine) return;
+    if (statusListener) statusListener("fetching");
+
     try {
       const cloudMeta = await GoogleDriveSync.findFileByName(MANIFEST_FILE);
       
       if (cloudMeta) {
-        if (!localExists) {
-          // NEW DEVICE: User sees nothing until this finishes.
-          await this.restoreMetadata(cloudMeta.id);
-        } else {
-          // EXISTING DEVICE: Silently check for updates from other devices.
-          await this.syncWithCloud(cloudMeta.id);
-          await this.syncDirtyFiles();
-        }
-      } else if (!localExists) {
-        // NEW USER: Setup default structure
-        await this._saveToLocal(FOLDERS_FILE, [], false);
-        await this._saveToLocal(INDEXES_FILE, [], false);
-        manifest = { [MANIFEST_FILE]: { id: "", v: 0, dirty: true } };
+        // 1. Download Manifest
+        const cloudManifest = await GoogleDriveSync.downloadFile(cloudMeta.id);
+        manifest = cloudManifest;
         await this._persistManifest();
-      }
-    } catch (e) {
-      console.warn("Background sync paused (Network check failed).");
-    }
-  },
 
-  async syncWithCloud(cloudManifestId: string) {
-    try {
-      const cloudManifest = await GoogleDriveSync.downloadFile(cloudManifestId);
-      let localNeedsUpdate = false;
+        // 2. Download Folders and Indexes based on Cloud Manifest IDs
+        const idxId = manifest[INDEXES_FILE]?.id;
+        const fldId = manifest[FOLDERS_FILE]?.id;
 
-      for (const fileName in cloudManifest) {
-        const remote = cloudManifest[fileName];
-        const local = manifest[fileName];
-
-        if (!local) {
-          manifest[fileName] = { ...remote, dirty: false };
-          localNeedsUpdate = true;
-        } else if (remote.v > local.v) {
-          if (local.dirty) {
-            await this._handleConflict(fileName, remote);
-          } else {
-            manifest[fileName] = { ...remote, dirty: false };
-            localNeedsUpdate = true;
-          }
+        if (idxId) {
+          const idxData = await GoogleDriveSync.downloadFile(idxId);
+          await this._saveToLocal(INDEXES_FILE, idxData, false);
         }
+        if (fldId) {
+          const fldData = await GoogleDriveSync.downloadFile(fldId);
+          await this._saveToLocal(FOLDERS_FILE, fldData, false);
+        }
+
+        if (statusListener) statusListener("synced");
+        // Reload to inject restored data into the app state
+        // window.location.reload();
+        window.dispatchEvent(new CustomEvent("opfs-data-restored")); // ADD THIS
+      } else {
+        // No Cloud data found, proceed as a brand new user
+        await this._initializeNewUser();
       }
-      if (localNeedsUpdate) await this._persistManifest();
-    } catch (e) { console.error("Cloud manifest merge failed", e); }
-  },
-
-  async _handleConflict(id: string, remoteMeta: any) {
-    if (id.includes('nickblake')) return; 
-    const remoteData = await GoogleDriveSync.downloadFile(remoteMeta.id);
-    const localData = await this.loadNoteBlocks(id);
-
-    const conflictId = `CONFLICT-${Date.now()}-${id}`;
-    await this._saveToLocal(conflictId, localData, true);
-    manifest[conflictId] = { id: "", v: 0, dirty: true };
-
-    await this._saveToLocal(id, remoteData, true);
-    manifest[id] = { ...remoteMeta, dirty: false };
-    await this._persistManifest();
-  },
-
-  async restoreMetadata(driveId: string) {
-    try {
-      if (statusListener) statusListener("syncing");
-      const cloudManifest = await GoogleDriveSync.downloadFile(driveId);
-      manifest = cloudManifest;
-      await this._persistManifest();
-      
-      const idxId = manifest[INDEXES_FILE]?.id;
-      const fldId = manifest[FOLDERS_FILE]?.id;
-      if (idxId) await this._saveToLocal(INDEXES_FILE, await GoogleDriveSync.downloadFile(idxId), false);
-      if (fldId) await this._saveToLocal(FOLDERS_FILE, await GoogleDriveSync.downloadFile(fldId), false);
-      
-      if (statusListener) statusListener("synced");
-      window.location.reload(); // Refresh to inject restored data into UI
     } catch (e) {
+      console.error("Restore failed:", e);
       if (statusListener) statusListener("error");
     }
   },
 
-  // --- WRITES (Optimistic Local Save) ---
+  async _initializeNewUser() {
+    await this._saveToLocal(FOLDERS_FILE, [], false);
+    await this._saveToLocal(INDEXES_FILE, [], false);
+    manifest = { [MANIFEST_FILE]: { id: "", v: 0, dirty: true } };
+    await this._persistManifest();
+    
+    // Upload the initial skeleton
+    if (navigator.onLine) await this.syncDirtyFiles();
+  },
 
   async _performWrite(fileName: string, data: any, isNote: boolean) {
     await this.init();
@@ -150,7 +123,6 @@ export const StorageEngine = {
     if (!manifest[fileName]) manifest[fileName] = { id: "", v: 0, dirty: true };
     manifest[fileName].dirty = true;
     
-    // Ensure manifest is marked dirty for later cloud registry sync
     if (!manifest[MANIFEST_FILE]) manifest[MANIFEST_FILE] = { id: "", v: 0, dirty: true };
     manifest[MANIFEST_FILE].dirty = true;
     
@@ -220,8 +192,6 @@ export const StorageEngine = {
     });
   },
 
-  // --- READS (Instant OPFS access) ---
-
   async loadIndexes(): Promise<NoteIndex[]> {
     await this.init();
     try {
@@ -245,7 +215,6 @@ export const StorageEngine = {
       const h = await d.getFileHandle(`${id}.json`);
       return JSON.parse(await (await h.getFile()).text());
     } catch {
-      // Lazy-load from cloud if missing locally
       const driveId = manifest[id]?.id;
       if (driveId && navigator.onLine) {
         try {

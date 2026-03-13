@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { NoteIndex, Folder } from "@/lib/types"; // Ensure paths are correct
+import { NoteIndex, Folder } from "@/lib/types";
 import { StorageEngine } from "@/lib/storage-engine";
 
 export const useNotes = () => {
@@ -7,9 +7,12 @@ export const useNotes = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // 1. Initial Load: Only fetch the index and folder manifests
-  useEffect(() => {
-    const init = async () => {
+  /**
+   * Helper to pull fresh data from the Storage Engine.
+   * This is used during mount and when a cloud restore occurs.
+   */
+  const loadDataFromOPFS = useCallback(async () => {
+    try {
       const [idx, fld] = await Promise.all([
         StorageEngine.loadIndexes(),
         StorageEngine.loadFolders(),
@@ -17,17 +20,37 @@ export const useNotes = () => {
       setNoteIndexes(idx);
       setFolders(fld);
       setIsInitialized(true);
-    };
-    init();
+    } catch (error) {
+      console.error("Failed to load data from OPFS:", error);
+    }
   }, []);
+
+  // 1. Initial Load & Custom Event Listener
+  useEffect(() => {
+    // Initial mount load
+    loadDataFromOPFS();
+
+    // Listen for the custom event dispatched by StorageEngine after a restore
+    const handleRestore = () => {
+      console.log("StorageEngine notified: Cloud data restored to OPFS.");
+      loadDataFromOPFS();
+    };
+
+    window.addEventListener("opfs-data-restored", handleRestore);
+    return () => window.removeEventListener("opfs-data-restored", handleRestore);
+  }, [loadDataFromOPFS]);
 
   // 2. Auto-Save: Debounced sync of metadata only
   useEffect(() => {
-    if (isInitialized) StorageEngine.saveIndexesDebounced(noteIndexes);
+    if (isInitialized) {
+      StorageEngine.saveIndexesDebounced(noteIndexes);
+    }
   }, [noteIndexes, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized) StorageEngine.saveFoldersDebounced(folders);
+    if (isInitialized) {
+      StorageEngine.saveFoldersDebounced(folders);
+    }
   }, [folders, isInitialized]);
 
   // 3. Actions
@@ -42,7 +65,7 @@ export const useNotes = () => {
       updatedAt: new Date().toISOString()
     };
     setNoteIndexes(prev => [newIndex, ...prev]);
-    return id; // Return ID so router can navigate immediately
+    return id; 
   }, []);
 
   const updateNoteIndex = useCallback((id: string, updates: Partial<NoteIndex>) => {
@@ -53,7 +76,7 @@ export const useNotes = () => {
 
   const deleteNote = useCallback((id: string) => {
     setNoteIndexes(prev => prev.filter(n => n.id !== id));
-    StorageEngine.deleteNoteFile(id); // Physically wipe content from disk
+    StorageEngine.deleteNoteFile(id); 
   }, []);
 
   const createFolder = useCallback((name: string) => {
@@ -83,9 +106,7 @@ export const useNotes = () => {
   );
 
   const deleteFolder = useCallback((id: string) => {
-    // 1. Remove the folder itself
     setFolders((prev) => prev.filter((folder) => folder.id !== id));
-    // 2. Orphan the notes that were in that folder (set folderId to null)
     setNoteIndexes((prev) =>
       prev.map((index) =>
         index.folderId === id ? { ...index, folderId: null } : index

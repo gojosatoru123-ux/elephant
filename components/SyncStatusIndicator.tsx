@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StorageEngine, SyncStatus, SyncProgress } from "@/lib/storage-engine";
-import { Cloud, CloudOff, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Cloud, CloudOff, AlertCircle, CheckCircle2, DownloadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const SyncStatusIndicator = () => {
@@ -28,6 +28,13 @@ export const SyncStatusIndicator = () => {
             color: "text-blue-500",
             bg: "bg-blue-500/10",
             dot: "bg-blue-500 animate-pulse"
+        },
+        fetching: {
+            icon: DownloadCloud,
+            text: "Fetching Cloud Data...",
+            color: "text-indigo-500",
+            bg: "bg-indigo-500/10",
+            dot: "bg-indigo-500 animate-bounce" // Distinct animation for fetching
         },
         error: {
             icon: AlertCircle,
@@ -63,11 +70,15 @@ export const SyncStatusIndicator = () => {
                 <div className={cn("h-1.5 w-1.5 rounded-full ring-4 ring-background", active.dot)} />
             </div>
 
-            {status === "syncing" && prog.total > 0 && (
-                <div className="space-y-1.5">
+            {/* Progress Bar logic remains for syncing and fetching if progress is provided */}
+            {(status === "syncing" || status === "fetching") && prog.total > 0 && (
+                <div className="space-y-1.5 mt-2"> 
                     <div className="h-1 w-full overflow-hidden rounded-full bg-secondary">
                         <div
-                            className="h-full bg-blue-500 transition-all duration-700 ease-in-out"
+                            className={cn(
+                                "h-full transition-all duration-700 ease-in-out",
+                                status === "fetching" ? "bg-indigo-500" : "bg-blue-500"
+                            )}
                             style={{ width: `${(prog.current / prog.total) * 100}%` }}
                         />
                     </div>
