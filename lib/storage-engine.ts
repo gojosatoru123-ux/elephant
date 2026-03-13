@@ -39,6 +39,7 @@ export const StorageEngine = {
           localManifestExist = true;
         } catch {
           manifest = {};
+          localManifestExist = false;
         }
 
         // We resolve the init early so the UI can render from OPFS immediately.
