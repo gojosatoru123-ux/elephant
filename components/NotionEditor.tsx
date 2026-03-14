@@ -1,12 +1,12 @@
 "use client";
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Plus, 
-  GripVertical, 
-  Type, 
-  Heading1, 
-  Heading2, 
+import {
+  Plus,
+  GripVertical,
+  Type,
+  Heading1,
+  Heading2,
   Heading3,
   List,
   ListOrdered,
@@ -46,6 +46,7 @@ import {
   Pause,
   Volume2,
   ZoomIn,
+  Layers,
 } from "lucide-react";
 import { NoteBlock, FlashcardItem } from "@/lib/types";
 import ImageLightbox from "./ImageLightbox";
@@ -57,6 +58,7 @@ import DatabaseBlock from "./DatabaseBlock";
 import DataTable from "./DataTable";
 import KanbanBlock from "./KanbanBlock";
 import FlashcardStudyMode from "./FlashcardStudyMode";
+import TabsBlock from "./TabsBlock";
 
 interface NotionEditorProps {
   blocks: NoteBlock[];
@@ -95,6 +97,7 @@ const blockTypes = [
   { type: "mindmap" as const, icon: Share2, label: "Mind Map", description: "Interactive mind map", category: "advanced" },
   { type: "flashcard" as const, icon: Lightbulb, label: "Flashcards", description: "Quick revision cards", category: "advanced" },
   { type: "chart" as const, icon: BarChart3, label: "Chart", description: "Data visualization charts", category: "advanced" },
+  { type: "tabs" as const, icon: Layers, label: "Tabs", description: "Tabbed content sections", category: "advanced" },
 ] as const;
 
 const progressColors = [
@@ -211,7 +214,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
     onChange(newBlocks);
     setShowMenu(null);
     setMenuFilter("");
-    
+
     setTimeout(() => {
       const el = blockRefs.current.get(newBlock.id);
       if (el) {
@@ -224,7 +227,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const updateTableCell = (blockId: string, rowIndex: number, colIndex: number, value: string) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block?.tableData) return;
-    
+
     const newTableData = block.tableData.map((row, rIdx) =>
       row.map((cell, cIdx) => (rIdx === rowIndex && cIdx === colIndex ? value : cell))
     );
@@ -234,7 +237,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const addTableRow = (blockId: string) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block?.tableData) return;
-    
+
     const cols = block.tableData[0]?.length || 3;
     const newRow = Array(cols).fill("");
     updateBlock(blockId, { tableData: [...block.tableData, newRow] });
@@ -243,7 +246,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const addTableColumn = (blockId: string) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block?.tableData) return;
-    
+
     const newTableData = block.tableData.map(row => [...row, ""]);
     updateBlock(blockId, { tableData: newTableData });
   };
@@ -251,7 +254,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const deleteTableRow = (blockId: string, rowIndex: number) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block?.tableData || block.tableData.length <= 1) return;
-    
+
     const newTableData = block.tableData.filter((_, idx) => idx !== rowIndex);
     updateBlock(blockId, { tableData: newTableData });
   };
@@ -259,7 +262,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const deleteTableColumn = (blockId: string, colIndex: number) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block?.tableData || block.tableData[0]?.length <= 1) return;
-    
+
     const newTableData = block.tableData.map(row => row.filter((_, idx) => idx !== colIndex));
     updateBlock(blockId, { tableData: newTableData });
   };
@@ -269,7 +272,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
     const index = blocks.findIndex((b) => b.id === id);
     const newBlocks = blocks.filter((b) => b.id !== id);
     onChange(newBlocks);
-    
+
     if (index > 0) {
       setTimeout(() => {
         const prevBlock = newBlocks[index - 1];
@@ -627,14 +630,14 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
         onKeyDown={(e) => handleKeyDown(e, block)}
         className={`outline-none py-1 transition-all ${getBlockStyle(block.type)} empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40`}
         data-placeholder={
-          block.type === "heading1" ? "Heading 1" : 
-          block.type === "heading2" ? "Heading 2" : 
-          block.type === "heading3" ? "Heading 3" : 
-          block.type === "quote" ? "Write a quote..." : 
-          block.type === "code" ? "Write code..." :
-          block.type === "callout" ? "Write a callout..." :
-          block.type === "equation" ? "E = mc²" :
-          "Type '/' for commands, or start writing..."
+          block.type === "heading1" ? "Heading 1" :
+            block.type === "heading2" ? "Heading 2" :
+              block.type === "heading3" ? "Heading 3" :
+                block.type === "quote" ? "Write a quote..." :
+                  block.type === "code" ? "Write code..." :
+                    block.type === "callout" ? "Write a callout..." :
+                      block.type === "equation" ? "E = mc²" :
+                        "Type '/' for commands, or start writing..."
         }
       />
     );
@@ -796,30 +799,30 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               <div
                 ref={(el) => {
                   if (el) {
-                     contentRefs.current.set(block.id, el);
-                     if (!initializedRefs.current.has(block.id)) {
-                       el.innerHTML = block.content || "";
-                       initializedRefs.current.add(block.id);
-                     }
-                   }
-                 }}
-                 contentEditable
-                 suppressContentEditableWarning
-                 onInput={(e) => {
-                   const html = e.currentTarget.innerHTML || "";
-                   if (html !== block.content) {
-                     updateBlock(block.id, { content: html });
-                   }
-                 }}
-                 onBlur={(e) => {
-                   const html = e.currentTarget.innerHTML || "";
-                   if (html !== block.content) {
-                     updateBlock(block.id, { content: html });
-                   }
-                 }}
-                 onKeyDown={(e) => handleKeyDown(e, block)}
-                 className="flex-1 outline-none font-medium"
-                 data-placeholder="Toggle heading"
+                    contentRefs.current.set(block.id, el);
+                    if (!initializedRefs.current.has(block.id)) {
+                      el.innerHTML = block.content || "";
+                      initializedRefs.current.add(block.id);
+                    }
+                  }
+                }}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => {
+                  const html = e.currentTarget.innerHTML || "";
+                  if (html !== block.content) {
+                    updateBlock(block.id, { content: html });
+                  }
+                }}
+                onBlur={(e) => {
+                  const html = e.currentTarget.innerHTML || "";
+                  if (html !== block.content) {
+                    updateBlock(block.id, { content: html });
+                  }
+                }}
+                onKeyDown={(e) => handleKeyDown(e, block)}
+                className="flex-1 outline-none font-medium"
+                data-placeholder="Toggle heading"
               />
             </div>
             <AnimatePresence>
@@ -834,26 +837,26 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                     ref={(el) => {
                       if (el) {
                         const toggleKey = `${block.id}-toggle`;
-                         if (!initializedRefs.current.has(toggleKey)) {
-                           el.innerHTML = block.toggleContent || "";
-                           initializedRefs.current.add(toggleKey);
-                         }
-                       }
-                     }}
-                     contentEditable
-                     suppressContentEditableWarning
-                     onInput={(e) => {
-                       const html = e.currentTarget.innerHTML || "";
-                       if (html !== block.toggleContent) {
-                         updateBlock(block.id, { toggleContent: html });
-                       }
-                     }}
-                     onBlur={(e) => {
-                       const html = e.currentTarget.innerHTML || "";
-                       if (html !== block.toggleContent) {
-                         updateBlock(block.id, { toggleContent: html });
-                       }
-                     }}
+                        if (!initializedRefs.current.has(toggleKey)) {
+                          el.innerHTML = block.toggleContent || "";
+                          initializedRefs.current.add(toggleKey);
+                        }
+                      }
+                    }}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => {
+                      const html = e.currentTarget.innerHTML || "";
+                      if (html !== block.toggleContent) {
+                        updateBlock(block.id, { toggleContent: html });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const html = e.currentTarget.innerHTML || "";
+                      if (html !== block.toggleContent) {
+                        updateBlock(block.id, { toggleContent: html });
+                      }
+                    }}
                     className="outline-none text-sm min-h-10 py-1 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40"
                     data-placeholder="Add content inside this toggle..."
                   />
@@ -916,9 +919,9 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           <div className="py-2">
             {block.imageUrl ? (
               <div className="relative group/image rounded-lg overflow-hidden">
-                <img 
-                  src={block.imageUrl} 
-                  alt="Embedded" 
+                <img
+                  src={block.imageUrl}
+                  alt="Embedded"
                   className="w-full max-h-100 object-cover rounded-lg cursor-pointer"
                   onClick={() => openLightbox([{ url: block.imageUrl! }], 0)}
                 />
@@ -993,7 +996,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       const url = (e.target as HTMLInputElement).value;
-                      updateBlock(block.id, { 
+                      updateBlock(block.id, {
                         bookmarkUrl: url,
                         bookmarkTitle: new URL(url).hostname,
                       });
@@ -1329,7 +1332,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           <div className="py-3">
             <div className="relative pl-6 space-y-4">
               {(block.timelineItems || []).map((item, index) => (
-                <motion.div 
+                <motion.div
                   key={item.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1438,11 +1441,10 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                   className="p-1"
                 >
                   <Star
-                    className={`w-6 h-6 transition-colors ${
-                      index < (block.ratingValue || 0)
+                    className={`w-6 h-6 transition-colors ${index < (block.ratingValue || 0)
                         ? 'fill-yellow-400 text-yellow-400'
                         : 'text-muted-foreground/30'
-                    }`}
+                      }`}
                   />
                 </motion.button>
               ))}
@@ -1467,13 +1469,13 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       case "countdown":
         const CountdownDisplay = () => {
           const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-          
+
           useEffect(() => {
             const calculateTimeLeft = () => {
               const target = new Date(block.countdownDate || Date.now()).getTime();
               const now = Date.now();
               const diff = target - now;
-              
+
               if (diff > 0) {
                 setTimeLeft({
                   days: Math.floor(diff / (1000 * 60 * 60 * 24)),
@@ -1485,12 +1487,12 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
               }
             };
-            
+
             calculateTimeLeft();
             const interval = setInterval(calculateTimeLeft, 1000);
             return () => clearInterval(interval);
           }, [block.countdownDate]);
-          
+
           return (
             <div className="flex gap-3 justify-center">
               {[
@@ -1500,7 +1502,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 { label: "Seconds", value: timeLeft.seconds },
               ].map((unit) => (
                 <div key={unit.label} className="text-center">
-                  <motion.div 
+                  <motion.div
                     className="bg-primary/10 text-primary text-2xl font-bold px-4 py-3 rounded-lg min-w-15"
                     key={unit.value}
                     initial={{ scale: 1.1 }}
@@ -1514,7 +1516,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
             </div>
           );
         };
-        
+
         return (
           <div className="py-4">
             <div className="bg-linear-to-r from-primary/5 to-primary/10 rounded-xl p-6 border border-primary/20">
@@ -1728,6 +1730,16 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           </div>
         );
 
+      case "tabs":
+        return (
+          <div className="py-2">
+            <TabsBlock
+              tabs={block.tabsData || [{ id: crypto.randomUUID(), label: "Tab 1", content: "" }]}
+              onChange={(tabsData) => updateBlock(block.id, { tabsData })}
+            />
+          </div>
+        );
+
       default:
         return renderEditableContent(block);
     }
@@ -1749,15 +1761,13 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               scale: draggedBlockId === block.id ? 0.98 : 1,
             }}
             transition={{ duration: 0.15, type: "spring", stiffness: 300, damping: 30 }}
-            className={`group relative flex items-start gap-1 rounded-lg transition-all ${
-              draggedBlockId === block.id
+            className={`group relative flex items-start gap-1 rounded-lg transition-all ${draggedBlockId === block.id
                 ? 'bg-primary/5 shadow-lg shadow-primary/20'
                 : ''
-            } ${
-              dragOverBlockId === block.id && draggedBlockId !== block.id
+              } ${dragOverBlockId === block.id && draggedBlockId !== block.id
                 ? 'border-t-2 border-primary/50 pt-1'
                 : ''
-            }`}
+              }`}
             onMouseEnter={() => {
               setActiveBlockId(block.id);
               if (draggedBlockId && draggedBlockId !== block.id) {
@@ -1774,10 +1784,9 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
             }}
           >
             {/* Block Controls */}
-            <motion.div 
-              className={`flex items-center gap-0.5 pt-1 transition-all duration-200 ${
-                activeBlockId === block.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
-              }`}
+            <motion.div
+              className={`flex items-center gap-0.5 pt-1 transition-all duration-200 ${activeBlockId === block.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
+                }`}
             >
               <motion.button
                 onClick={() => setShowMenu(showMenu === block.id ? null : block.id)}
@@ -1824,7 +1833,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                         autoFocus
                       />
                     </div>
-                    
+
                     <div className="p-1.5 max-h-87.5 overflow-y-auto scrollbar-thin">
                       {/* Basic Blocks */}
                       {filteredBlockTypes.filter(bt => bt.category === "basic").length > 0 && (
@@ -1865,8 +1874,8 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                             <motion.button
                               key={bt.type}
                               onClick={() => {
-                                updateBlock(block.id, { 
-                                  type: bt.type, 
+                                updateBlock(block.id, {
+                                  type: bt.type,
                                   content: block.content,
                                   isExpanded: bt.type === "toggle" ? true : undefined,
                                   toggleContent: bt.type === "toggle" ? "" : undefined,
@@ -1933,7 +1942,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                               key={bt.type}
                               onClick={() => {
                                 const baseUpdate: Partial<NoteBlock> = { type: bt.type, content: "" };
-                                
+
                                 // Set default values for each advanced block type
                                 if (bt.type === "table") {
                                   baseUpdate.tableData = [["", "", ""], ["", "", ""], ["", "", ""]];
@@ -1971,7 +1980,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                                   baseUpdate.flashcards = [];
                                   baseUpdate.content = "Flashcards";
                                 }
-                                
+
                                 updateBlock(block.id, baseUpdate);
                                 setShowMenu(null);
                                 setMenuFilter("");
@@ -1990,13 +1999,13 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                           ))}
                         </>
                       )}
-                      
+
                       {filteredBlockTypes.length === 0 && (
                         <p className="px-3 py-4 text-sm text-muted-foreground text-center">
                           No blocks found
                         </p>
                       )}
-                      
+
                       <div className="border-t border-border my-1.5" />
                       <motion.button
                         onClick={() => deleteBlock(block.id)}
