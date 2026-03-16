@@ -425,9 +425,9 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
         </AnimatePresence>
 
         {/* Main Content Wrapper */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden w-full min-w-0">
           {/* Content Area */}
-          <div className={`flex-1 overflow-y-auto scrollbar-thin transition-all duration-300 ${focusMode
+          <div className={`flex-1 overflow-y-auto scrollbar-thin transition-all duration-300 w-full min-w-0  ${focusMode
               ? 'bg-linear-to-br from-background via-background to-primary/5 pt-8'
               : ''
             }`}>
@@ -442,9 +442,9 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
             )}
 
             <motion.div
-              className={`mx-auto transition-all duration-300 relative z-10 ${focusMode
-                  ? 'max-w-3xl pt-16 px-4 md:px-6 py-6'
-                  : 'max-w-4xl p-6 md:p-10'
+              className={`mx-auto transition-all duration-300 relative z-10 w-full min-w-0  ${focusMode
+                  ? 'max-w-5xl pt-16 px-4 md:px-6 py-6'
+                  : 'max-w-5xl p-6 md:p-10'
                 }`}
               layout
             >

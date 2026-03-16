@@ -65,7 +65,7 @@ const KanbanBlock = ({ block, updateBlock }: KanbanBlockProps) => {
         {columns.map((column, colIndex) => (
           <div
             key={column.id}
-            className={`min-w-50 bg-muted/30 rounded-lg p-3 border transition-colors group/column ${
+            className={`min-w-50 shrink-0 bg-muted/30 rounded-lg p-3 border transition-colors group/column ${
               dragOverCol === colIndex && dragCard?.colIndex !== colIndex
                 ? "border-primary/50 bg-primary/5"
                 : "border-border"
@@ -168,7 +168,7 @@ const KanbanBlock = ({ block, updateBlock }: KanbanBlockProps) => {
                   };
                   updateBlock(block.id, { kanbanColumns: newColumns });
                 }}
-                className="w-full py-2 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                className="w-full shrink-0 py-2 text-xs text-muted-foreground hover:bg-muted rounded-lg transition-colors"
               >
                 + Add card
               </button>

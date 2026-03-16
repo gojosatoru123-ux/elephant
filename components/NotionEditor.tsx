@@ -1747,7 +1747,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
 
   return (
     <>
-      <div className="space-y-1 min-h-50">
+      <div className="space-y-1 min-h-50 w-full min-w-0">
         {blocks.map((block) => (
           <motion.div
             key={`${block.id}-${block.type}`}
@@ -1761,7 +1761,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               scale: draggedBlockId === block.id ? 0.98 : 1,
             }}
             transition={{ duration: 0.15, type: "spring", stiffness: 300, damping: 30 }}
-            className={`group relative flex items-start gap-1 rounded-lg transition-all ${draggedBlockId === block.id
+            className={`group relative flex items-start gap-1 rounded-lg transition-all w-full min-w-0 ${draggedBlockId === block.id
                 ? 'bg-primary/5 shadow-lg shadow-primary/20'
                 : ''
               } ${dragOverBlockId === block.id && draggedBlockId !== block.id
@@ -1785,19 +1785,19 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           >
             {/* Block Controls */}
             <motion.div
-              className={`flex items-center gap-0.5 pt-1 transition-all duration-200 ${activeBlockId === block.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
+              className={`flex items-center gap-0.5 pt-1 transition-all shrink-0 duration-200 ${activeBlockId === block.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
                 }`}
             >
               <motion.button
                 onClick={() => setShowMenu(showMenu === block.id ? null : block.id)}
-                className="p-1.5 rounded-lg hover:bg-muted transition-colors group/btn"
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors group/btn shrink-0"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
                 <Plus className="w-4 h-4 text-muted-foreground group-hover/btn:text-primary transition-colors" />
               </motion.button>
               <motion.button
-                className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing"
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing shrink-0"
                 whileHover={{ scale: 1.1 }}
                 onPointerDown={(e) => {
                   e.preventDefault();
@@ -1809,7 +1809,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
             </motion.div>
 
             {/* Block Content */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-0">
               {renderBlock(block)}
 
               {/* Block Type Menu */}
