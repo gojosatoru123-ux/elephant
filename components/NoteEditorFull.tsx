@@ -177,8 +177,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
         {/* Top Bar */}
         <motion.div
           className={`flex items-center justify-between px-6 py-3 border-b border-border transition-all duration-300 ${focusMode
-              ? 'bg-transparent border-transparent opacity-0 hover:opacity-100 absolute top-0 left-0 right-0 z-10'
-              : 'bg-card/50 backdrop-blur-sm'
+            ? 'bg-transparent border-transparent opacity-0 hover:opacity-100 absolute top-0 left-0 right-0 z-10'
+            : 'bg-card/50 backdrop-blur-sm'
             }`}
           initial={false}
           animate={{
@@ -189,22 +189,23 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />
-              <span>Updated {format(new Date(note.updatedAt), "MMM d, h:mm a")}</span>
+              <span className="sm:hidden">{format(new Date(note.updatedAt), "MMM d ")}</span>
+              <span className="hidden sm:block">Updated {format(new Date(note.updatedAt), "MMM d, h:mm a")}</span>
               <SyncStatusIndicator />
             </div>
           </div>
           <div className="flex items-center gap-1">
             {/* Undo/Redo Buttons */}
             <TooltipProvider delayDuration={200}>
-              <div className="flex items-center gap-0.5 mr-2 border-r border-border pr-2">
+              <div className="hidden sm:flex items-center gap-0.5 mr-2 border-r border-border pr-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <motion.button
                       onClick={handleUndo}
                       disabled={!canUndo}
                       className={`p-2 rounded-lg transition-colors ${canUndo
-                          ? 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                          : 'text-muted-foreground/30 cursor-not-allowed'
+                        ? 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        : 'text-muted-foreground/30 cursor-not-allowed'
                         }`}
                       whileHover={canUndo ? { scale: 1.1 } : {}}
                       whileTap={canUndo ? { scale: 0.9 } : {}}
@@ -223,8 +224,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
                       onClick={handleRedo}
                       disabled={!canRedo}
                       className={`p-2 rounded-lg transition-colors ${canRedo
-                          ? 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                          : 'text-muted-foreground/30 cursor-not-allowed'
+                        ? 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        : 'text-muted-foreground/30 cursor-not-allowed'
                         }`}
                       whileHover={canRedo ? { scale: 1.1 } : {}}
                       whileTap={canRedo ? { scale: 0.9 } : {}}
@@ -242,7 +243,7 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
             {/* Templates Button */}
             <motion.button
               onClick={() => setShowTemplates(true)}
-              className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+              className="hidden sm:block p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               title="Use a template"
@@ -254,8 +255,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
             <motion.button
               onClick={onToggleFocusMode}
               className={`p-2 rounded-lg transition-colors ${focusMode
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted text-muted-foreground'
+                ? 'bg-primary/10 text-primary'
+                : 'hover:bg-muted text-muted-foreground'
                 }`}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -268,8 +269,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
             <motion.button
               onClick={() => setShowIndex(!showIndex)}
               className={`p-2 rounded-lg transition-colors relative ${showIndex
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted text-muted-foreground'
+                ? 'bg-primary/10 text-primary'
+                : 'hover:bg-muted text-muted-foreground'
                 }`}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -287,14 +288,14 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
               )}
             </motion.button>
 
-            <motion.button
+            {/* <motion.button
               onClick={() => setIsFavorite(!isFavorite)}
               className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-yellow-500' : 'hover:bg-muted text-muted-foreground'}`}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
               <Star className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
-            </motion.button>
+            </motion.button> */}
             {/* Export Button */}
             <div className="relative">
               <motion.button
@@ -337,13 +338,13 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
               </AnimatePresence>
             </div>
 
-            <motion.button
+            {/* <motion.button
               className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
               <Share2 className="w-4 h-4" />
-            </motion.button>
+            </motion.button> */}
           </div>
         </motion.div>
 
@@ -400,10 +401,10 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
                       >
                         <span
                           className={`block truncate transition-colors ${heading.level === 1
-                              ? 'font-medium text-foreground'
-                              : heading.level === 2
-                                ? 'font-normal text-foreground/85'
-                                : 'text-foreground/70 text-xs'
+                            ? 'font-medium text-foreground'
+                            : heading.level === 2
+                              ? 'font-normal text-foreground/85'
+                              : 'text-foreground/70 text-xs'
                             }`}
                         >
                           {heading.text || `Untitled ${heading.level === 1 ? "Heading" : "Subheading"}`}
@@ -428,8 +429,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
         <div className="flex flex-1 overflow-hidden w-full min-w-0">
           {/* Content Area */}
           <div className={`flex-1 overflow-y-auto scrollbar-thin transition-all duration-300 w-full min-w-0  ${focusMode
-              ? 'bg-linear-to-br from-background via-background to-primary/5 pt-8'
-              : ''
+            ? 'bg-linear-to-br from-background via-background to-primary/5 pt-8'
+            : ''
             }`}>
             {/* Focus mode decorative elements */}
             {focusMode && (
@@ -443,8 +444,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
 
             <motion.div
               className={`mx-auto transition-all duration-300 relative z-10 w-full min-w-0  ${focusMode
-                  ? 'max-w-5xl pt-16 px-4 md:px-6 py-6'
-                  : 'max-w-5xl p-6 md:p-10'
+                ? 'max-w-5xl pt-16 px-4 md:px-6 py-6'
+                : 'max-w-5xl p-2 md:p-10'
                 }`}
               layout
             >
@@ -475,8 +476,8 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
                   value={note.title}
                   onChange={(e) => onUpdate({ title: e.target.value })}
                   className={`w-full font-bold text-foreground bg-transparent border-none outline-none placeholder:text-muted-foreground/30 tracking-tight transition-all duration-300 ${focusMode
-                      ? 'text-6xl md:text-7xl text-center bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent'
-                      : 'text-4xl md:text-5xl'
+                    ? 'text-6xl md:text-7xl text-center bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent'
+                    : 'text-4xl md:text-5xl'
                     }`}
                   placeholder="Untitled"
                 />

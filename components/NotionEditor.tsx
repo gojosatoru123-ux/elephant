@@ -1808,24 +1808,24 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           />
         );
 
-        case "steps":
-          return (
-            <StepsBlock
-              steps={block.stepsItems || [{ id: crypto.randomUUID(), title: "Step 1", description: "", completed: false }]}
-              onUpdate={(stepsItems) => updateBlock(block.id, { stepsItems })}
-            />
-          );
+      case "steps":
+        return (
+          <StepsBlock
+            steps={block.stepsItems || [{ id: crypto.randomUUID(), title: "Step 1", description: "", completed: false }]}
+            onUpdate={(stepsItems) => updateBlock(block.id, { stepsItems })}
+          />
+        );
 
-          case "swot":
-            return (
-              <SwotBlock
-                strengths={block.swotStrengths || [""]}
-                weaknesses={block.swotWeaknesses || [""]}
-                opportunities={block.swotOpportunities || [""]}
-                threats={block.swotThreats || [""]}
-                onUpdate={(updates) => updateBlock(block.id, updates)}
-              />
-            );
+      case "swot":
+        return (
+          <SwotBlock
+            strengths={block.swotStrengths || [""]}
+            weaknesses={block.swotWeaknesses || [""]}
+            opportunities={block.swotOpportunities || [""]}
+            threats={block.swotThreats || [""]}
+            onUpdate={(updates) => updateBlock(block.id, updates)}
+          />
+        );
       default:
         return renderEditableContent(block);
     }
@@ -1871,7 +1871,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           >
             {/* Block Controls */}
             <motion.div
-              className={`flex items-center gap-0.5 pt-1 transition-all shrink-0 duration-200 ${activeBlockId === block.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
+              className={`hidden md:flex items-center gap-0.5 pt-1 transition-all shrink-0 duration-200 ${activeBlockId === block.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
                 }`}
             >
               <motion.button
@@ -2065,7 +2065,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                                 } else if (bt.type === "flashcard") {
                                   baseUpdate.flashcards = [];
                                   baseUpdate.content = "Flashcards";
-                                }else if (bt.type === "swot") {
+                                } else if (bt.type === "swot") {
                                   baseUpdate.swotStrengths = [""];
                                   baseUpdate.swotWeaknesses = [""];
                                   baseUpdate.swotOpportunities = [""];
