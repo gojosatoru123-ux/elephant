@@ -1,7 +1,13 @@
 "use client";
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Trash2, Search, Paperclip, Plus, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Trash2,
+  Search,
+  Plus,
+  X,
+  Check
+} from "lucide-react";
 import { Note, NoteIndex } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
 import { SidebarTrigger } from "./ui/sidebar";
@@ -29,20 +35,13 @@ const NotesListPanel = ({
 }: NotesListPanelProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredNoteIndexes = searchQuery
-    ? noteIndexes.filter(
-        (index) =>
-          index.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? noteIndexes.filter((index) =>
+      index.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : noteIndexes;
-
-  const getPreview = (noteIndex: NoteIndex) => {
-    if (!getNoteById) return "No content";
-    const fullNote = getNoteById(noteIndex.id);
-    const textBlock = fullNote?.blocks.find((b) => b.content);
-    return textBlock?.content.slice(0, 50) || "No content";
-  };
 
   const formatTime = (dateString: string) => {
     try {
@@ -59,7 +58,7 @@ const NotesListPanel = ({
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-        <SidebarTrigger className="-ml-1" />
+          <SidebarTrigger className="-ml-1" />
           <h2 className="text-xl font-semibold text-foreground">{title}</h2>
           <div className="flex items-center gap-2">
             {showSearch && (
@@ -79,23 +78,25 @@ const NotesListPanel = ({
           </div>
         </div>
 
-        {isSearching && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="mt-3"
-          >
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search notes..."
-              autoFocus
-              className="w-full px-3 py-2 rounded-lg bg-muted border border-border outline-none focus:border-primary text-sm"
-            />
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {isSearching && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mt-3 overflow-hidden"
+            >
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search notes..."
+                autoFocus
+                className="w-full px-3 py-2 rounded-lg bg-muted border border-border outline-none focus:border-primary text-sm"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Notes List */}
@@ -105,45 +106,85 @@ const NotesListPanel = ({
             {searchQuery ? "No notes found" : "No notes yet"}
           </div>
         ) : (
-          filteredNoteIndexes.map((noteIndex, index) => (
-            <motion.div
-              key={noteIndex.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
-              onClick={() => onSelectNote(noteIndex.id)}
-              className={`note-item p-4 border-b border-border cursor-pointer group transition-all ${
-                activeNoteId === noteIndex.id ? "bg-primary/10 border-l-2 border-primary rounded-l-lg" : ""
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground truncate mb-1">
-                    {noteIndex.title || "Untitled"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-1">
-                    {getPreview(noteIndex)}
-                  </p>
+          filteredNoteIndexes.map((noteIndex, index) => {
+            const isDeleting = deletingId === noteIndex.id;
+
+            return (
+              <motion.div
+                key={noteIndex.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+                onClick={() => !isDeleting && onSelectNote(noteIndex.id)}
+                className={`note-item p-4 border-b border-border cursor-pointer group transition-all relative ${activeNoteId === noteIndex.id ? "bg-primary/10 border-l-2 border-primary rounded-l-lg" : "hover:bg-muted/30"
+                  }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground truncate mb-1">
+                      {noteIndex.title || "Untitled"}
+                    </h3>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatTime(noteIndex.updatedAt)}
+                    </span>
+
+                    {/* Actions container: only visible on hover of the row */}
+                    <div className="h-7 flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <AnimatePresence mode="wait">
+                        {isDeleting ? (
+                          <motion.div
+                            key="confirm"
+                            initial={{ opacity: 0, x: 5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 5 }}
+                            className="flex items-center gap-1"
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteNote(noteIndex.id);
+                                setDeletingId(null);
+                              }}
+                              className="p-1 rounded bg-destructive text-white hover:bg-destructive/90 transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingId(null);
+                              }}
+                              className="p-1 rounded bg-muted text-foreground hover:bg-muted/80 border border-border transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </motion.div>
+                        ) : (
+                          <motion.button
+                            key="trash"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingId(noteIndex.id);
+                            }}
+                            className="p-1 rounded hover:bg-destructive/10 text-destructive transition-all"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatTime(noteIndex.updatedAt)}
-                  </span>
-                  <motion.button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteNote(noteIndex.id);
-                    }}
-                    className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-all"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          ))
+              </motion.div>
+            );
+          })
         )}
       </div>
 
