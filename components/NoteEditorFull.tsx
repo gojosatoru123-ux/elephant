@@ -445,7 +445,7 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
             <motion.div
               className={`mx-auto transition-all duration-300 relative z-10 w-full min-w-0  ${focusMode
                 ? 'max-w-5xl pt-16 px-4 md:px-6 py-6'
-                : 'max-w-5xl p-2 md:p-10'
+                : 'max-w-5xl p-6 md:p-10'
                 }`}
               layout
             >
