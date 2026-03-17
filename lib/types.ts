@@ -24,7 +24,7 @@ export interface NoteBlock {
     // Layout & formatting blocks
     | "steps" | "labeledDivider" | "faq"
     // New premium blocks
-    | "comparisonTable";
+    | "comparisonTable" | "imageText";
   content: string;
   checked?: boolean;
   tableData?: string[][];
@@ -98,6 +98,11 @@ export interface NoteBlock {
   dividerStyle?: string;
   // FAQ block
   faqItems?: { id: string; question: string; answer: string }[];
+  // Image-Text Split
+  imageTextUrl?: string;
+  imageTextTitle?: string;
+  imageTextDescription?: string;
+  imageTextLayout?: "imageLeft" | "imageRight";
   // Comparison Table
   comparisonColumns?: { id: string; name: string; highlighted?: boolean }[];
   comparisonRows?: { id: string; feature: string; values: Record<string, "yes" | "no" | "partial" | string> }[];

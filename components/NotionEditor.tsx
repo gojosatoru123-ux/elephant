@@ -52,6 +52,7 @@ import {
   GitCompare,
   Footprints,
   Grid2x2,
+  LayoutTemplate,
 } from "lucide-react";
 import { NoteBlock, FlashcardItem } from "@/lib/types";
 import ImageLightbox from "./ImageLightbox";
@@ -69,6 +70,7 @@ import FaqBlock from "./FaqBlock";
 import ComparisonTableBlock from "./ComparisonTableBlock";
 import StepsBlock from "./StepsBlock";
 import SwotBlock from "./SwotBlock";
+import ImageTextBlock from "./ImageTextBlock";
 
 interface NotionEditorProps {
   blocks: NoteBlock[];
@@ -113,6 +115,7 @@ const blockTypes = [
   { type: "comparisonTable" as const, icon: GitCompare, label: "Comparison", description: "Compare options side by side", category: "advanced" },
   { type: "steps" as const, icon: Footprints, label: "Steps", description: "Step-by-step process flow", category: "advanced" },
   { type: "swot" as const, icon: Grid2x2, label: "SWOT Analysis", description: "Strengths, Weaknesses, Opportunities, Threats", category: "advanced" },
+  { type: "imageText" as const, icon: LayoutTemplate, label: "Image + Text", description: "Split layout with image", category: "media" },
 ] as const;
 
 const progressColors = [
@@ -244,6 +247,11 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       swotWeaknesses: type === "swot" ? [""] : undefined,
       swotOpportunities: type === "swot" ? [""] : undefined,
       swotThreats: type === "swot" ? [""] : undefined,
+      // Image + Text
+      imageTextUrl: type === "imageText" ? "" : undefined,
+      imageTextTitle: type === "imageText" ? "" : undefined,
+      imageTextDescription: type === "imageText" ? "" : undefined,
+      imageTextLayout: type === "imageText" ? "imageLeft" : undefined,
     };
     const index = blocks.findIndex((b) => b.id === afterId);
     const newBlocks = [...blocks];
@@ -1826,6 +1834,18 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
             onUpdate={(updates) => updateBlock(block.id, updates)}
           />
         );
+
+      case "imageText":
+        return (
+          <ImageTextBlock
+            imageUrl={block.imageTextUrl || ""}
+            title={block.imageTextTitle || ""}
+            description={block.imageTextDescription || ""}
+            layout={block.imageTextLayout || "imageLeft"}
+            onUpdate={(updates) => updateBlock(block.id, updates)}
+            onOpenLightbox={openLightbox}
+          />
+        );
       default:
         return renderEditableContent(block);
     }
@@ -1997,6 +2017,11 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                                 const baseUpdate: Partial<NoteBlock> = { type: bt.type, content: "" };
                                 if (bt.type === "gallery") {
                                   baseUpdate.galleryImages = [];
+                                } else if (bt.type === "imageText") {
+                                  baseUpdate.imageTextUrl = "";
+                                  baseUpdate.imageTextTitle = "";
+                                  baseUpdate.imageTextDescription = "";
+                                  baseUpdate.imageTextLayout = "imageLeft";
                                 }
                                 updateBlock(block.id, baseUpdate);
                                 setShowMenu(null);
