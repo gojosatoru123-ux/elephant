@@ -38,6 +38,7 @@ import WeekView from "@/components/calendar/WeekView"
 import DayView from "@/components/calendar/DayView"
 import AgendaView from "@/components/calendar/AgendaView"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator"
 
 type ViewMode = "month" | "week" | "day" | "agenda"
 
@@ -200,6 +201,7 @@ const CalendarPage = () => {
                     View and manage your schedule
                   </p>
                 </div>
+                <SyncStatusIndicator/>
               </div>
               <div className="flex items-center gap-2">
                 <Button

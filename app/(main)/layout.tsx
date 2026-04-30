@@ -9,9 +9,6 @@ import { StorageEngine } from "@/lib/storage-engine";
 export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     StorageEngine.init();
-    const sync = () => StorageEngine.syncDirtyFiles();
-    window.addEventListener("online", sync);
-    return () => window.removeEventListener("online", sync);
   }, []);
 
   return (

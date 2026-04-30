@@ -47,21 +47,6 @@ const Dashboard = () => {
     router.push(`/note/ideas/${noteId}`);
   };
 
-  const handleManualRestore = async () => {
-    if (isRestoring) return;
-    try {
-      setIsRestoring(true);
-      await StorageEngine.fetchAndRestoreFromCloud();
-      // No need to reload here, the event listener in useNotes 
-      // will pick up the change and update the UI automatically.
-    } catch (error) {
-      console.error("Manual restore failed:", error);
-    } finally {
-      // Give it a tiny delay so the user sees the "Synced" state
-      setTimeout(() => setIsRestoring(false), 500);
-    }
-  };
-
   if (!isInitialized) {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-background">
@@ -160,18 +145,6 @@ const Dashboard = () => {
               <SyncStatusIndicator />
               
               {/* Manual Restore Button */}
-              <button 
-                onClick={handleManualRestore}
-                disabled={isRestoring}
-                className={cn(
-                  "p-1.5 rounded-md cursor-pointer hover:bg-muted text-muted-foreground transition-all flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold border border-transparent hover:border-border",
-                  isRestoring && "opacity-50 cursor-not-allowed"
-                )}
-                title="Restore Skeleton from Cloud"
-              >
-                <RefreshCw className={cn("w-3.5 h-3.5", isRestoring && "animate-spin")} />
-                {isRestoring ? "Restoring..." : "Restore"}
-              </button>
             </div>
             
             <Link

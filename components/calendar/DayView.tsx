@@ -1,8 +1,7 @@
 "use client"
 import { motion } from "framer-motion";
 import { format, isSameDay, isToday } from "date-fns";
-import { Note, NoteIndex, NoteBlock } from "@/lib/types";
-import { CalendarEvent } from "@/hooks/useCalendarEvents";
+import { Note, NoteIndex, NoteBlock, CalendarEvent } from "@/lib/types";
 import { Plus, Trash2, StickyNote, Clock } from "lucide-react";
 
 interface DayViewProps {

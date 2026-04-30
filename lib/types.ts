@@ -135,3 +135,20 @@ export interface Folder {
   color: string;
   createdAt: string;
 }
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // ISO date string
+  time?: string; // HH:mm format
+  color: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface FlashcardDeck {
+  id: string;
+  name: string;
+  cards: FlashcardItem[];
+  createdAt: string;
+}

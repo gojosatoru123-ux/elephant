@@ -1,9 +1,8 @@
 "use client"
 import { motion } from "framer-motion";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isAfter, isBefore, addDays } from "date-fns";
-import { CalendarEvent } from "@/hooks/useCalendarEvents";
 import { StickyNote, Clock, Calendar, Trash2 } from "lucide-react";
-import { Note, NoteIndex } from "@/lib/types";
+import { CalendarEvent, Note, NoteIndex } from "@/lib/types";
 
 interface AgendaViewProps {
   currentMonth: Date;

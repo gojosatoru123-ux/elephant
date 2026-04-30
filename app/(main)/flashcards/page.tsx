@@ -1,35 +1,14 @@
-"use client"
-import { useState, useMemo } from "react";
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Play, Layers, Trash2, Edit2, Check, X } from "lucide-react";
+import { Plus, Play, Layers, Trash2, Edit2, Check, X, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FlashcardItem } from "@/lib/types";
+import { FlashcardDeck, FlashcardItem } from "@/lib/types";
 import FlashcardStudyMode from "@/components/FlashcardStudyMode";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-
-interface FlashcardDeck {
-  id: string;
-  name: string;
-  cards: FlashcardItem[];
-  createdAt: string;
-}
-
-const DECKS_KEY = "elephant-flashcard-decks";
-
-// Helper to get stored decks from localStorage
-const getStoredDecks = (): FlashcardDeck[] => {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(DECKS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveDecks = (decks: FlashcardDeck[]) => {
-  localStorage.setItem(DECKS_KEY, JSON.stringify(decks));
-};
+import { StorageEngine } from "@/lib/storage-engine";
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 
 const cardColors = [
   { name: "yellow", bg: "bg-yellow-100 dark:bg-yellow-900/30", border: "border-yellow-300 dark:border-yellow-700", text: "text-yellow-900 dark:text-yellow-100" },
@@ -41,15 +20,41 @@ const cardColors = [
 ];
 
 const FlashcardsPage = () => {
-  // We no longer need noteIndexes or getNoteById here
-  const [decks, setDecks] = useState<FlashcardDeck[]>(getStoredDecks);
+  const [decks, setDecks] = useState<FlashcardDeck[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [studyMode, setStudyMode] = useState<{ cards: FlashcardItem[]; title: string } | null>(null);
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
+  const [deletingDeckId, setDeletingDeckId] = useState<string | null>(null);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null); // Added for card confirmation
   const [editingDeckName, setEditingDeckName] = useState("");
   const [newDeckName, setNewDeckName] = useState("");
   const [showNewDeck, setShowNewDeck] = useState(false);
 
-  // Total cards from independent decks only
+  useEffect(() => {
+    const initAndLoad = async () => {
+      setIsLoading(true);
+      try {
+        const storedDecks = await StorageEngine.loadDecks();
+        setDecks((storedDecks as unknown as FlashcardDeck[]) || []);
+      } catch (error) {
+        console.error("Failed to load decks:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAndLoad();
+
+    const handleExternalUpdate = () => initAndLoad();
+    window.addEventListener("opfs-data-restored", handleExternalUpdate);
+    return () => window.removeEventListener("opfs-data-restored", handleExternalUpdate);
+  }, []);
+
+  const syncToStorage = (updatedDecks: FlashcardDeck[]) => {
+    setDecks(updatedDecks);
+    StorageEngine.saveSlideDebounced(updatedDecks as any);
+  };
+
   const totalCardsCount = useMemo(() => {
     return decks.reduce((acc, d) => acc + d.cards.length, 0);
   }, [decks]);
@@ -62,17 +67,14 @@ const FlashcardsPage = () => {
       cards: [],
       createdAt: new Date().toISOString(),
     };
-    const updated = [...decks, newDeck];
-    setDecks(updated);
-    saveDecks(updated);
+    syncToStorage([...decks, newDeck]);
     setNewDeckName("");
     setShowNewDeck(false);
   };
 
-  const deleteDeck = (deckId: string) => {
-    const updated = decks.filter(d => d.id !== deckId);
-    setDecks(updated);
-    saveDecks(updated);
+  const confirmDeleteDeck = (deckId: string) => {
+    syncToStorage(decks.filter(d => d.id !== deckId));
+    setDeletingDeckId(null);
   };
 
   const renameDeck = (deckId: string) => {
@@ -80,8 +82,7 @@ const FlashcardsPage = () => {
     const updated = decks.map(d =>
       d.id === deckId ? { ...d, name: editingDeckName.trim() } : d
     );
-    setDecks(updated);
-    saveDecks(updated);
+    syncToStorage(updated);
     setEditingDeckId(null);
     setEditingDeckName("");
   };
@@ -95,8 +96,7 @@ const FlashcardsPage = () => {
     const updated = decks.map(d =>
       d.id === deckId ? { ...d, cards: [...d.cards, newCard] } : d
     );
-    setDecks(updated);
-    saveDecks(updated);
+    syncToStorage(updated);
   };
 
   const updateCard = (deckId: string, cardId: string, content: string) => {
@@ -105,18 +105,17 @@ const FlashcardsPage = () => {
         ? { ...d, cards: d.cards.map(c => c.id === cardId ? { ...c, content } : c) }
         : d
     );
-    setDecks(updated);
-    saveDecks(updated);
+    syncToStorage(updated);
   };
 
-  const deleteCard = (deckId: string, cardId: string) => {
+  const confirmDeleteCard = (deckId: string, cardId: string) => {
     const updated = decks.map(d =>
       d.id === deckId
         ? { ...d, cards: d.cards.filter(c => c.id !== cardId) }
         : d
     );
-    setDecks(updated);
-    saveDecks(updated);
+    syncToStorage(updated);
+    setDeletingCardId(null);
   };
 
   const changeCardColor = (deckId: string, cardId: string) => {
@@ -132,8 +131,7 @@ const FlashcardsPage = () => {
         }),
       };
     });
-    setDecks(updated);
-    saveDecks(updated);
+    syncToStorage(updated);
   };
 
   const getCardStyle = (colorName: string) => {
@@ -141,16 +139,19 @@ const FlashcardsPage = () => {
     return `${color.bg} ${color.border} ${color.text}`;
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-background overflow-y-auto scrollbar-thin">
       <ScrollArea className="flex-1">
         <div className="max-w-7xl mx-auto p-2 sm:p-8 space-y-8">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
@@ -160,11 +161,11 @@ const FlashcardsPage = () => {
                     {totalCardsCount} cards across {decks.length} decks
                   </p>
                 </div>
+                <SyncStatusIndicator />
               </div>
             </div>
           </motion.div>
 
-          {/* Independent Decks Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -182,7 +183,6 @@ const FlashcardsPage = () => {
               </motion.button>
             </div>
 
-            {/* New Deck Input */}
             <AnimatePresence>
               {showNewDeck && (
                 <motion.div
@@ -212,106 +212,177 @@ const FlashcardsPage = () => {
               )}
             </AnimatePresence>
 
-            {/* Decks List */}
             <div className="space-y-4">
-              {decks.map((deck) => (
-                <motion.div
-                  key={deck.id}
-                  className="p-4 rounded-2xl border border-border bg-card"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    {editingDeckId === deck.id ? (
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="text"
-                          value={editingDeckName}
-                          onChange={(e) => setEditingDeckName(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && renameDeck(deck.id)}
-                          className="flex-1 bg-transparent outline-none text-foreground font-semibold"
-                          autoFocus
-                        />
-                        <button onClick={() => renameDeck(deck.id)} className="p-1 rounded hover:bg-muted">
-                          <Check className="w-4 h-4 text-green-500" />
-                        </button>
-                        <button onClick={() => setEditingDeckId(null)} className="p-1 rounded hover:bg-muted">
-                          <X className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div>
-                          <h3 className="font-semibold text-foreground">{deck.name}</h3>
-                          <p className="text-sm text-muted-foreground">{deck.cards.length} cards</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {deck.cards.length > 0 && (
-                            <motion.button
-                              onClick={() => setStudyMode({ cards: deck.cards, title: deck.name })}
-                              className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <Play className="w-4 h-4" />
-                            </motion.button>
-                          )}
-                          <motion.button
-                            onClick={() => { setEditingDeckId(deck.id); setEditingDeckName(deck.name); }}
-                            className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            onClick={() => deleteDeck(deck.id)}
-                            className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+              {decks.map((deck) => {
+                const isDeckDeleting = deletingDeckId === deck.id;
 
-                  {/* Cards Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {deck.cards.map((card) => (
-                      <motion.div
-                        key={card.id}
-                        className={`relative p-3 rounded-xl border-2 ${getCardStyle(card.color)} min-h-20 group`}
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <textarea
-                          value={card.content}
-                          onChange={(e) => updateCard(deck.id, card.id, e.target.value)}
-                          placeholder="Add note..."
-                          className="w-full h-full bg-transparent outline-none text-sm resize-none placeholder:text-muted-foreground/50"
-                        />
-                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button onClick={() => changeCardColor(deck.id, card.id)} className="p-1 rounded-full bg-background/80 hover:bg-background">
-                            <div className={`w-3 h-3 rounded-full ${cardColors.find(c => c.name === card.color)?.bg || 'bg-yellow-200'}`} />
+                return (
+                  <motion.div
+                    key={deck.id}
+                    className="p-4 rounded-2xl border border-border bg-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      {editingDeckId === deck.id ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <input
+                            type="text"
+                            value={editingDeckName}
+                            onChange={(e) => setEditingDeckName(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && renameDeck(deck.id)}
+                            className="flex-1 bg-transparent outline-none text-foreground font-semibold"
+                            autoFocus
+                          />
+                          <button onClick={() => renameDeck(deck.id)} className="p-1 rounded hover:bg-muted">
+                            <Check className="w-4 h-4 text-green-500" />
                           </button>
-                          <button onClick={() => deleteCard(deck.id, card.id)} className="p-1 rounded-full bg-background/80 hover:bg-destructive/20">
-                            <X className="w-3 h-3 text-destructive" />
+                          <button onClick={() => setEditingDeckId(null)} className="p-1 rounded hover:bg-muted">
+                            <X className="w-4 h-4 text-muted-foreground" />
                           </button>
                         </div>
-                      </motion.div>
-                    ))}
-                    <motion.button
-                      onClick={() => addCardToDeck(deck.id)}
-                      className="p-3 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 min-h-20 flex items-center justify-center transition-colors"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Plus className="w-5 h-5 text-muted-foreground" />
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
+                      ) : (
+                        <>
+                          <div>
+                            <h3 className="font-semibold text-foreground">{deck.name}</h3>
+                            <p className="text-sm text-muted-foreground">{deck.cards.length} cards</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {deck.cards.length > 0 && !isDeckDeleting && (
+                              <motion.button
+                                onClick={() => setStudyMode({ cards: deck.cards, title: deck.name })}
+                                className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <Play className="w-4 h-4" />
+                              </motion.button>
+                            )}
+                            {!isDeckDeleting && (
+                              <motion.button
+                                onClick={() => { setEditingDeckId(deck.id); setEditingDeckName(deck.name); }}
+                                className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </motion.button>
+                            )}
+
+                            <AnimatePresence mode="wait">
+                              {isDeckDeleting ? (
+                                <motion.div
+                                  key="confirm"
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.8 }}
+                                  className="flex items-center gap-1 bg-destructive/10 p-1 rounded-lg"
+                                >
+                                  <button
+                                    onClick={() => confirmDeleteDeck(deck.id)}
+                                    className="p-1.5 rounded-md bg-destructive text-white hover:bg-destructive/90"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingDeckId(null)}
+                                    className="p-1.5 rounded-md bg-muted text-foreground border border-border"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </motion.div>
+                              ) : (
+                                <motion.button
+                                  key="trash"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  onClick={() => setDeletingDeckId(deck.id)}
+                                  className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </motion.button>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {deck.cards.map((card) => {
+                        const isCardDeleting = deletingCardId === card.id;
+
+                        return (
+                          <motion.div
+                            key={card.id}
+                            className={`relative p-3 rounded-xl border-2 ${getCardStyle(card.color)} min-h-20 group`}
+                            whileHover={{ scale: 1.02 }}
+                          >
+                            <textarea
+                              value={card.content}
+                              onChange={(e) => updateCard(deck.id, card.id, e.target.value)}
+                              placeholder="Add note..."
+                              className="w-full h-full bg-transparent outline-none text-sm resize-none placeholder:text-muted-foreground/50"
+                            />
+                            <div className="absolute top-1 right-1 flex gap-1">
+                              <AnimatePresence mode="wait">
+                                {isCardDeleting ? (
+                                  <motion.div
+                                    key="card-confirm"
+                                    initial={{ opacity: 0, scale: 0.5 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.5 }}
+                                    className="flex gap-1 bg-background/90 p-1 rounded-full shadow-sm border border-destructive/20"
+                                  >
+                                    <button
+                                      onClick={() => confirmDeleteCard(deck.id, card.id)}
+                                      className="p-1 rounded-full bg-destructive text-white hover:bg-destructive/90"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => setDeletingCardId(null)}
+                                      className="p-1 rounded-full bg-muted text-foreground hover:bg-muted-foreground/10"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </motion.div>
+                                ) : (
+                                  <motion.div
+                                    key="card-actions"
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
+                                  >
+                                    <button onClick={() => changeCardColor(deck.id, card.id)} className="p-1 rounded-full bg-background/80 hover:bg-background">
+                                      <div className={`w-3 h-3 rounded-full ${cardColors.find(c => c.name === card.color)?.bg || 'bg-yellow-200'}`} />
+                                    </button>
+                                    <button
+                                      onClick={() => setDeletingCardId(card.id)}
+                                      className="p-1 rounded-full bg-background/80 hover:bg-destructive/20"
+                                    >
+                                      <X className="w-3.5 h-3.5 text-destructive" />
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                      <motion.button
+                        onClick={() => addCardToDeck(deck.id)}
+                        className="p-3 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 min-h-20 flex items-center justify-center transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Plus className="w-5 h-5 text-muted-foreground" />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                );
+              })}
 
               {decks.length === 0 && !showNewDeck && (
                 <motion.div className="text-center py-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -332,7 +403,6 @@ const FlashcardsPage = () => {
         </div>
       </ScrollArea>
 
-      {/* Study Mode */}
       <AnimatePresence>
         {studyMode && (
           <FlashcardStudyMode

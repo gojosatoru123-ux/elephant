@@ -1,32 +1,37 @@
 import { useState, useEffect, useCallback } from "react";
-
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  date: string; // ISO date string
-  time?: string; // HH:mm format
-  color: string;
-  description?: string;
-  createdAt: string;
-}
-
-const EVENTS_KEY = "elephant-calendar-events";
-
-const getStoredEvents = (): CalendarEvent[] => {
-  try {
-    const stored = localStorage.getItem(EVENTS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
+import { StorageEngine } from "@/lib/storage-engine";
+import { CalendarEvent } from "@/lib/types";
 
 export const useCalendarEvents = () => {
-  const [events, setEvents] = useState<CalendarEvent[]>(getStoredEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 1. Initial Load from StorageEngine
+  const loadFromEngine = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const stored = await StorageEngine.loadCalendars();
+      setEvents(stored || []);
+    } catch (error) {
+      console.error("Failed to load calendar events:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-  }, [events]);
+    loadFromEngine();
+
+    // Listen for cloud/backup restores
+    window.addEventListener("opfs-data-restored", loadFromEngine);
+    return () => window.removeEventListener("opfs-data-restored", loadFromEngine);
+  }, [loadFromEngine]);
+
+  // 2. Helper to sync React state to OPFS
+  const syncEvents = useCallback((updated: CalendarEvent[]) => {
+    setEvents(updated);
+    StorageEngine.saveCalendarDebounced(updated);
+  }, []);
 
   const createEvent = useCallback((event: Omit<CalendarEvent, "id" | "createdAt">): CalendarEvent => {
     const newEvent: CalendarEvent = {
@@ -34,20 +39,28 @@ export const useCalendarEvents = () => {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     };
-    setEvents((prev) => [...prev, newEvent]);
+    setEvents((prev) => {
+      const updated = [...prev, newEvent];
+      StorageEngine.saveCalendarDebounced(updated);
+      return updated;
+    });
     return newEvent;
   }, []);
 
   const updateEvent = useCallback((id: string, updates: Partial<CalendarEvent>) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === id ? { ...event, ...updates } : event
-      )
-    );
+    setEvents((prev) => {
+      const updated = prev.map((event) => event.id === id ? { ...event, ...updates } : event);
+      StorageEngine.saveCalendarDebounced(updated);
+      return updated;
+    });
   }, []);
 
   const deleteEvent = useCallback((id: string) => {
-    setEvents((prev) => prev.filter((event) => event.id !== id));
+    setEvents((prev) => {
+      const updated = prev.filter((event) => event.id !== id);
+      StorageEngine.saveCalendarDebounced(updated);
+      return updated;
+    });
   }, []);
 
   const getEventsForDate = useCallback(
@@ -70,6 +83,7 @@ export const useCalendarEvents = () => {
 
   return {
     events,
+    isLoading,
     createEvent,
     updateEvent,
     deleteEvent,

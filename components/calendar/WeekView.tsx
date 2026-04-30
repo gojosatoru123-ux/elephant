@@ -1,8 +1,7 @@
 "use client"
 import { motion } from "framer-motion";
 import { format, startOfWeek, addDays, isSameDay, isToday } from "date-fns";
-import { Note, NoteIndex } from "@/lib/types";
-import { CalendarEvent } from "@/hooks/useCalendarEvents";
+import { CalendarEvent, Note, NoteIndex } from "@/lib/types";
 import { Plus, Trash2 } from "lucide-react";
 
 interface WeekViewProps {

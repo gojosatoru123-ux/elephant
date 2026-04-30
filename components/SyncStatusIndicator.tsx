@@ -6,7 +6,7 @@ import { Cloud, CloudOff, AlertCircle, CheckCircle2, DownloadCloud } from "lucid
 import { cn } from "@/lib/utils";
 
 export const SyncStatusIndicator = () => {
-    const [status, setStatus] = useState<SyncStatus>("synced");
+    const [status, setStatus] = useState<SyncStatus>("nocloud");
     const [prog, setProg] = useState<SyncProgress>({ current: 0, total: 0 });
 
     useEffect(() => {
@@ -46,6 +46,13 @@ export const SyncStatusIndicator = () => {
         offline: {
             icon: CloudOff,
             text: "Offline",
+            color: "text-zinc-400",
+            bg: "bg-zinc-100",
+            dot: "bg-zinc-400"
+        },
+        nocloud: {
+            icon: CloudOff,
+            text: "No Cloud Access",
             color: "text-zinc-400",
             bg: "bg-zinc-100",
             dot: "bg-zinc-400"
