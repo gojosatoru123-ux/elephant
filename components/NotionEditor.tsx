@@ -696,6 +696,24 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
         type: type as NoteBlock["type"],
         content: type === "divider" ? "---" : current.content,
       };
+      // Sensible defaults for special block types so they render immediately.
+      if (type === "todo") updates.checked = false;
+      if (type === "table")
+        updates.tableData = [["", "", ""], ["", "", ""], ["", "", ""]];
+      if (type === "toggle") {
+        updates.isExpanded = true;
+        updates.toggleContent = "";
+      }
+      if (type === "columns") {
+        updates.columns = [
+          [{ id: crypto.randomUUID(), type: "text", content: "" }],
+          [{ id: crypto.randomUUID(), type: "text", content: "" }],
+        ];
+        updates.columnTitles = ["Column 1", "Column 2"];
+      }
+      if (type === "callout") {
+        updates.content = current.content || "Type something...";
+      }
       updateBlock(id, updates);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

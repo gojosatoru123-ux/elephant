@@ -17,6 +17,17 @@ import {
   Plus,
   X,
   ChevronDown,
+  Image as ImageIcon,
+  Music,
+  Play,
+  Table as TableIcon,
+  Paperclip,
+  Lightbulb,
+  Columns as ColumnsIcon,
+  ChevronRight,
+  Link2,
+  BarChart3,
+  Calculator,
 } from "lucide-react";
 
 export type MobileBlockType =
@@ -29,19 +40,28 @@ export type MobileBlockType =
   | "todo"
   | "quote"
   | "divider"
-  | "code";
+  | "code"
+  // Special blocks
+  | "image"
+  | "audio"
+  | "video"
+  | "table"
+  | "file"
+  | "callout"
+  | "toggle"
+  | "columns"
+  | "bookmark"
+  | "chart"
+  | "equation";
 
 interface MobileEditorToolbarProps {
-  /**
-   * Convert the currently-focused block to one of the basic types.
-   * Should be a no-op if no block is focused.
-   */
   onConvertBlock: (type: MobileBlockType) => void;
-  /** True when an editable surface in the note is focused. */
   isEditing: boolean;
 }
 
-const BASIC_BLOCKS: { type: MobileBlockType; icon: React.ElementType; label: string }[] = [
+type BlockDef = { type: MobileBlockType; icon: React.ElementType; label: string };
+
+const BASIC_BLOCKS: BlockDef[] = [
   { type: "text", icon: Type, label: "Text" },
   { type: "heading1", icon: Heading1, label: "H1" },
   { type: "heading2", icon: Heading2, label: "H2" },
@@ -54,28 +74,35 @@ const BASIC_BLOCKS: { type: MobileBlockType; icon: React.ElementType; label: str
   { type: "divider", icon: Minus, label: "Divider" },
 ];
 
-/**
- * Fixed toolbar that anchors itself just above the on-screen keyboard
- * using the VisualViewport API. Provides the basic block-conversion + inline
- * formatting actions that replace the desktop "/" slash menu on touch devices.
- */
+const MEDIA_BLOCKS: BlockDef[] = [
+  { type: "image", icon: ImageIcon, label: "Image" },
+  { type: "video", icon: Play, label: "Video" },
+  { type: "audio", icon: Music, label: "Audio" },
+  { type: "file", icon: Paperclip, label: "File" },
+  { type: "bookmark", icon: Link2, label: "Bookmark" },
+];
+
+const ADVANCED_BLOCKS: BlockDef[] = [
+  { type: "table", icon: TableIcon, label: "Table" },
+  { type: "callout", icon: Lightbulb, label: "Callout" },
+  { type: "toggle", icon: ChevronRight, label: "Toggle" },
+  { type: "columns", icon: ColumnsIcon, label: "Columns" },
+  { type: "chart", icon: BarChart3, label: "Chart" },
+  { type: "equation", icon: Calculator, label: "Equation" },
+];
+
 const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarProps) => {
   const [bottomOffset, setBottomOffset] = useState(0);
   const [showBlockSheet, setShowBlockSheet] = useState(false);
   const lastScrollEl = useRef<Element | null>(null);
 
-  /* ---- Track the visual viewport so the bar floats above the keyboard. ---- */
   useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     if (!vv) return;
-
     const updateOffset = () => {
-      // Distance from the bottom of the layout viewport to the bottom of the visual viewport.
-      // When the keyboard is up, this is the keyboard height.
       const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       setBottomOffset(offset);
     };
-
     updateOffset();
     vv.addEventListener("resize", updateOffset);
     vv.addEventListener("scroll", updateOffset);
@@ -85,31 +112,22 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
     };
   }, []);
 
-  /* ---- Keep the focused editable in view above the toolbar + keyboard. ---- */
   useEffect(() => {
     if (!isEditing) return;
-
     const TOOLBAR_HEIGHT = 56;
     const PADDING = 12;
-
     const ensureVisible = () => {
       const el = document.activeElement as HTMLElement | null;
       if (!el || !(el as any).getBoundingClientRect) return;
-      // Only act on editable surfaces.
       const editable =
-        el.isContentEditable ||
-        el.tagName === "INPUT" ||
-        el.tagName === "TEXTAREA";
+        el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA";
       if (!editable) return;
-
       const rect = el.getBoundingClientRect();
       const vv = (window as any).visualViewport as VisualViewport | undefined;
       const viewportBottom = vv ? vv.height + vv.offsetTop : window.innerHeight;
       const safeBottom = viewportBottom - TOOLBAR_HEIGHT - PADDING;
-
       if (rect.bottom > safeBottom) {
         const delta = rect.bottom - safeBottom;
-        // Find a scrollable ancestor and scroll it.
         let parent: HTMLElement | null = el.parentElement;
         while (parent) {
           const style = window.getComputedStyle(parent);
@@ -127,21 +145,14 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
         window.scrollBy({ top: delta, behavior: "smooth" });
       }
     };
-
-    // Run when focus changes, when the viewport (keyboard) resizes, and
-    // periodically while typing (caret can move below the safe area).
     const onFocusIn = () => requestAnimationFrame(ensureVisible);
     const onSelectionChange = () => requestAnimationFrame(ensureVisible);
     const onResize = () => setTimeout(ensureVisible, 50);
-
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("selectionchange", onSelectionChange);
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     vv?.addEventListener("resize", onResize);
-
-    // Initial pass.
     setTimeout(ensureVisible, 100);
-
     return () => {
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("selectionchange", onSelectionChange);
@@ -149,7 +160,6 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
     };
   }, [isEditing]);
 
-  /* ---- Inline formatting (works on the live selection). ---- */
   const exec = useCallback((cmd: "bold" | "italic" | "underline") => {
     document.execCommand(cmd, false);
   }, []);
@@ -159,14 +169,10 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
     setShowBlockSheet(false);
   };
 
-  if (!isEditing && bottomOffset === 0) {
-    // Nothing to show.
-    return null;
-  }
+  if (!isEditing && bottomOffset === 0) return null;
 
   return (
     <>
-      {/* Bottom sheet of basic blocks (replaces ⌘+/ on touch). */}
       <AnimatePresence>
         {showBlockSheet && (
           <>
@@ -176,7 +182,6 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
               exit={{ opacity: 0 }}
               onClick={() => setShowBlockSheet(false)}
               onTouchStart={(e) => {
-                // Prevent the keyboard from staying up if user taps backdrop.
                 e.preventDefault();
                 setShowBlockSheet(false);
               }}
@@ -187,11 +192,14 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 380, damping: 36 }}
-              style={{ bottom: bottomOffset }}
-              className="fixed left-0 right-0 z-[9999] bg-card border-t border-border rounded-t-2xl shadow-2xl pb-[env(safe-area-inset-bottom)]"
+              style={{ bottom: bottomOffset, maxHeight: "70vh" }}
+              className="fixed left-0 right-0 z-[9999] bg-card border-t border-border rounded-t-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] flex flex-col"
             >
-              <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                <span className="text-sm font-semibold text-foreground">Insert block</span>
+              <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-1 rounded-full bg-muted-foreground/30 absolute left-1/2 -translate-x-1/2 top-1.5" />
+                  <span className="text-sm font-semibold text-foreground">Insert block</span>
+                </div>
                 <button
                   onClick={() => setShowBlockSheet(false)}
                   className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
@@ -200,43 +208,35 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-4 gap-2 p-3 pb-5">
-                {BASIC_BLOCKS.map((b) => (
-                  <button
-                    key={b.type}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => handleConvert(b.type)}
-                    className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-muted/40 hover:bg-muted active:scale-95 transition-all"
-                  >
-                    <b.icon className="w-5 h-5 text-foreground" />
-                    <span className="text-[11px] text-muted-foreground">{b.label}</span>
-                  </button>
-                ))}
+
+              <div className="overflow-y-auto px-3 pb-5">
+                <BlockSection title="Basic" blocks={BASIC_BLOCKS} onSelect={handleConvert} />
+                <BlockSection title="Media" blocks={MEDIA_BLOCKS} onSelect={handleConvert} />
+                <BlockSection title="Advanced" blocks={ADVANCED_BLOCKS} onSelect={handleConvert} />
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Persistent toolbar pinned just above the keyboard. */}
+      {/* Persistent toolbar pinned just above the keyboard.
+          Quick block conversions live inside the bottom sheet to avoid duplication —
+          this bar focuses on Insert + inline formatting. */}
       <motion.div
         initial={false}
         animate={{ y: 0 }}
         style={{ bottom: bottomOffset }}
         className="fixed left-0 right-0 z-[9997] bg-card/95 backdrop-blur-md border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]"
-        // Prevent taps on the toolbar from blurring the editor (which would dismiss the keyboard).
         onMouseDown={(e) => e.preventDefault()}
         onTouchStart={(e) => {
-          // Only swallow if we're not pressing an input.
           const t = e.target as HTMLElement;
           if (!t.closest("input, textarea")) e.preventDefault();
         }}
       >
         <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto scrollbar-thin">
-          {/* Insert / convert (replaces "/" slash menu) */}
           <button
             onClick={() => setShowBlockSheet(true)}
-            className="flex items-center gap-1 px-3 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium shrink-0"
+            className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium shrink-0"
           >
             <Plus className="w-4 h-4" />
             Block
@@ -245,28 +245,55 @@ const MobileEditorToolbar = ({ onConvertBlock, isEditing }: MobileEditorToolbarP
 
           <div className="w-px h-5 bg-border mx-1 shrink-0" />
 
-          {/* Quick block conversion */}
-          <ToolbarIcon icon={Heading1} label="H1" onClick={() => onConvertBlock("heading1")} />
-          <ToolbarIcon icon={Heading2} label="H2" onClick={() => onConvertBlock("heading2")} />
-          <ToolbarIcon icon={List} label="Bullet" onClick={() => onConvertBlock("bullet")} />
-          <ToolbarIcon icon={ListOrdered} label="Numbered" onClick={() => onConvertBlock("numbered")} />
-          <ToolbarIcon icon={CheckSquare} label="To-do" onClick={() => onConvertBlock("todo")} />
-          <ToolbarIcon icon={Quote} label="Quote" onClick={() => onConvertBlock("quote")} />
-
-          <div className="w-px h-5 bg-border mx-1 shrink-0" />
-
-          {/* Inline formatting */}
+          {/* Inline formatting only — no duplicates of block types */}
           <ToolbarIcon icon={Bold} label="Bold" onClick={() => exec("bold")} />
           <ToolbarIcon icon={Italic} label="Italic" onClick={() => exec("italic")} />
           <ToolbarIcon icon={Underline} label="Underline" onClick={() => exec("underline")} />
+
+          <div className="w-px h-5 bg-border mx-1 shrink-0" />
+
+          {/* A few super-frequent block shortcuts */}
+          <ToolbarIcon icon={CheckSquare} label="To-do" onClick={() => onConvertBlock("todo")} />
+          <ToolbarIcon icon={List} label="Bullet" onClick={() => onConvertBlock("bullet")} />
+          <ToolbarIcon icon={Heading2} label="Heading" onClick={() => onConvertBlock("heading2")} />
         </div>
       </motion.div>
 
-      {/* Spacer so the editor scroll area can reach above the toolbar. */}
       <div aria-hidden style={{ height: 56 + bottomOffset }} />
     </>
   );
 };
+
+const BlockSection = ({
+  title,
+  blocks,
+  onSelect,
+}: {
+  title: string;
+  blocks: BlockDef[];
+  onSelect: (t: MobileBlockType) => void;
+}) => (
+  <div className="mt-3">
+    <div className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {title}
+    </div>
+    <div className="grid grid-cols-4 gap-2">
+      {blocks.map((b) => (
+        <button
+          key={b.type}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onSelect(b.type)}
+          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-muted/40 hover:bg-muted active:scale-95 transition-all"
+        >
+          <b.icon className="w-5 h-5 text-foreground" />
+          <span className="text-[11px] text-muted-foreground text-center leading-tight">
+            {b.label}
+          </span>
+        </button>
+      ))}
+    </div>
+  </div>
+);
 
 const ToolbarIcon = ({
   icon: Icon,
