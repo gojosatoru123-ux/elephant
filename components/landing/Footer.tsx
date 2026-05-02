@@ -11,9 +11,9 @@ const SpiralSVG = ({ className }: { className?: string }) => (
 );
 
 const footerLinks = {
-    Product: ["Features", "Mind Maps", "Templates", "Pricing", "Changelog"],
-    Resources: ["Documentation", "Blog", "Community", "Support", "API"],
-    Company: ["About", "Careers", "Privacy", "Terms", "Contact"],
+    Product: ["Blocks", "Mind Maps", "Templates", "Local-First", "Changelog"],
+    Resources: ["Documentation", "Blog", "Privacy Guide", "Support", "API"],
+    Company: ["About", "Careers", "Security", "Terms", "Contact"],
 };
 
 const Footer = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
@@ -74,10 +74,10 @@ const Footer = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                             </motion.div>
 
                             <h3 className="text-2xl font-bold text-white sm:text-3xl md:text-4xl lg:text-5xl">
-                                Ready to own your notes?
+                                Ready for a faster workspace?
                             </h3>
                             <p className="mx-auto mt-3 max-w-lg text-xs text-white/50 sm:mt-4 sm:text-sm md:text-base">
-                                Join 50,000+ people who trust NoteVault for private, offline-first note-taking with seamless Google Drive backup.
+                                Experience the power of local-first productivity. Your data stays with you, always accessible, with the speed your work demands.
                             </p>
 
                             <motion.button
@@ -86,11 +86,11 @@ const Footer = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                                 whileTap={{ scale: 0.95 }}
                                 className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-lg transition-all duration-200 sm:py-3.5 my-4"
                             >
-                                Get Started Free <ArrowRight className="h-4 w-4" />
+                                Start Building for Free <ArrowRight className="h-4 w-4" />
                             </motion.button>
 
                             <p className="mt-3 text-[10px] text-white/50 sm:text-xs">
-                                No credit card required · Free forever plan available
+                                Instant setup · Private by design · Forever free plan
                             </p>
                         </div>
                     </motion.div>
@@ -110,13 +110,13 @@ const Footer = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                                 <span className="text-lg font-bold text-white">NoteVault</span>
                             </motion.div>
                             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/40">
-                                The offline-first note-taking app that respects your privacy. Write beautifully, sync securely, own your data.
+                                The professional local-first workspace. 50+ formatting blocks and 30+ templates designed for speed, privacy, and creative freedom.
                             </p>
 
                             <div className="mt-5 space-y-2">
                                 {[
                                     { icon: Mail, text: "hello@notevault.app" },
-                                    { icon: MapPin, text: "San Francisco, CA" },
+                                    { icon: MapPin, text: "Privacy-first Infrastructure" },
                                 ].map(({ icon: Icon, text }) => (
                                     <div key={text} className="flex items-center gap-2 text-xs text-white/50">
                                         <Icon className="h-3.5 w-3.5" />
@@ -184,12 +184,12 @@ const Footer = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                         className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/8 pt-8 sm:mt-16 md:flex-row"
                     >
                         <div className="flex items-center gap-1.5 text-xs text-white/50">
-                            <span>© 2026 NoteVault. Made with</span>
+                            <span>© 2026 NoteVault. Built for</span>
                             <Heart className="h-3 w-3 fill-destructive/60 text-destructive/60" />
-                            <span>for privacy lovers</span>
+                            <span>digital sovereignty</span>
                         </div>
                         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-                            {["Privacy Policy", "Terms of Service", "Cookies", "Status"].map((item) => (
+                            {["Privacy Policy", "Terms of Service", "Local-First Manifesto", "Status"].map((item) => (
                                 <motion.a
                                     key={item}
                                     href="#"

@@ -1,7 +1,7 @@
 'use client'
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { Smartphone, Monitor, Tablet } from "lucide-react";
+import { Smartphone, Monitor, Tablet, HardDrive, Share2, Cpu } from "lucide-react";
 import SyncDashboardMockup from "./mockups/SyncDashboardMockup";
 
 const SpiralSVG = ({ className }: { className?: string }) => (
@@ -41,17 +41,17 @@ const GoLiveSection = () => {
                             Step 2
                         </span>
                         <h3 className="mt-4 text-2xl font-bold text-foreground sm:text-4xl md:text-5xl">
-                            Sync everywhere<br />automatically
+                            Works wherever<br />you work
                         </h3>
                         <p className="mt-4 mx-auto max-w-sm text-sm text-muted-foreground leading-relaxed sm:text-base md:mx-0">
-                            Your notes are yours. Every change is saved locally first, then automatically backed up to Google Drive.
+                            Your notes are yours. Every change is instantly saved to your device, giving you a lightning-fast experience across every platform.
                         </p>
 
                         <div className="mt-6 flex items-center justify-center gap-3 sm:mt-8 sm:gap-4 md:justify-start">
                             {[
+                                { icon: Monitor, label: "Web" },
                                 { icon: Smartphone, label: "Mobile" },
-                                { icon: Monitor, label: "Desktop" },
-                                { icon: Tablet, label: "Tablet" },
+                                { icon: HardDrive, label: "Native" },
                             ].map((item, i) => (
                                 <motion.div
                                     key={item.label}

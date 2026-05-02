@@ -1,5 +1,5 @@
 'use client'
-import { Star, Heart, Cloud, Sparkles } from "lucide-react";
+import { Star, Heart, Cloud, Sparkles, ShieldCheck, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import NoteDashboardMockup from "./mockups/NoteDashboardMockup";
 
@@ -30,7 +30,7 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                 className="relative mb-4 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--green-light))] px-3 py-1.5 border border-[hsl(var(--green-badge))]/20 sm:mb-6 sm:px-4 sm:py-2"
             >
                 <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--green-badge))] sm:h-4 sm:w-4" />
-                <span className="text-xs font-medium text-[hsl(var(--green-badge))] sm:text-sm">Your notes, your device, your rules</span>
+                <span className="text-xs font-medium text-[hsl(var(--green-badge))] sm:text-sm">Zero Latency. Total Privacy. 100% Offline.</span>
             </motion.div>
 
             <motion.h1
@@ -39,9 +39,9 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                 transition={{ duration: 0.6 }}
                 className="relative mx-auto max-w-3xl text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl md:text-7xl"
             >
-                Offline-First Notes That{" "}
+                Your Ideas Deserve the{" "}
                 <span className="relative inline-block">
-                    <span className="relative z-10">Sync to Google Drive</span>
+                    <span className="relative z-10">Speed of Thought</span>
                     <motion.span
                         initial={{ scaleX: 0 }}
                         animate={{ scaleX: 1 }}
@@ -56,7 +56,7 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                 transition={{ duration: 0.6, delay: 0.15 }}
                 className="relative mx-auto mt-4 max-w-lg text-sm text-muted-foreground sm:mt-6 sm:text-lg"
             >
-                Beautiful formatting like Notion, mind maps, and all your data stays with you — backed up securely to Google Drive.
+                Escape the cloud lag. Use 50+ formatting blocks and 30+ ready-to-go templates in a workspace that lives entirely on your device.
             </motion.p>
 
             <motion.div
@@ -66,7 +66,7 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                 className="relative mt-6 flex flex-col items-center justify-center gap-3 sm:mt-8 sm:flex-row"
             >
                 <button onClick={signinwithgoogle} className="cursor-pointer inline-flex w-full items-center justify-center rounded-full bg-[hsl(var(--green-badge))] px-6 py-3 text-sm font-medium text-white shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 sm:w-auto">
-                    Start with Google in one click
+                    Start taking notes instantly
                 </button>
             </motion.div>
 
@@ -89,11 +89,11 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                     className="absolute -right-2 top-4 hidden rounded-2xl bg-[hsl(var(--yellow-light))] p-2 shadow-lg border border-accent/20 sm:block sm:p-3 md:-right-16 md:top-8 hover:scale-105 transition-transform duration-200"
                 >
                     <div className="flex items-center gap-2">
-                        <span className="text-xl font-bold text-foreground sm:text-2xl">142</span>
-                        <span className="text-[10px] text-muted-foreground sm:text-xs">Notes<br />Synced</span>
+                        <span className="text-xl font-bold text-foreground sm:text-2xl">50+</span>
+                        <span className="text-[10px] text-muted-foreground sm:text-xs">Dynamic<br />Blocks</span>
                     </div>
                     <div className="mt-1 flex items-center gap-1 text-xs font-bold text-[hsl(var(--green-badge))] sm:text-sm">
-                        <Cloud className="h-3 w-3" /> Backed up
+                        <Zap className="h-3 w-3" /> Zero Lag
                     </div>
                 </motion.div>
 
@@ -103,9 +103,9 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                     className="absolute -left-2 top-1/4 hidden items-center gap-0.5 rounded-full bg-[hsl(var(--green-light))] px-2 py-1.5 shadow-lg border border-[hsl(var(--green-badge))]/20 sm:flex sm:px-3 md:-left-12"
                 >
                     {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-3 w-3 fill-[hsl(var(--yellow-tag))] text-[hsl(var(--yellow-tag))] sm:h-3.5 sm:w-3.5" />
+                        <Star key={i} className="h-3 w-3 fill-[hsl(var(--yellow-tag))] text-[hsl(var(--yellow-tag)) ] sm:h-3.5 sm:w-3.5" />
                     ))}
-                    <span className="ml-1 text-[10px] font-semibold text-foreground sm:text-xs">4.9</span>
+                    <span className="ml-1 text-[10px] font-semibold text-foreground sm:text-xs">Professional Grade</span>
                 </motion.div>
 
                 <motion.div
@@ -113,16 +113,16 @@ const HeroSection = ({ signinwithgoogle }: { signinwithgoogle: () => {} }) => {
                     transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
                     className="absolute -right-1 bottom-4 hidden items-center gap-1.5 rounded-full bg-[hsl(var(--peach-bg))] px-2 py-1 shadow-lg border border-destructive/10 sm:flex sm:px-3 sm:py-1.5 md:-right-12 md:bottom-8 hover:scale-105 transition-transform duration-200"
                 >
-                    <Heart className="h-3 w-3 fill-destructive text-destructive sm:h-3.5 sm:w-3.5" />
-                    <span className="text-xs font-semibold sm:text-sm">2.4k loves</span>
+                    <ShieldCheck className="h-3 w-3 text-destructive sm:h-3.5 sm:w-3.5" />
+                    <span className="text-xs font-semibold sm:text-sm">Local Storage Only</span>
                 </motion.div>
             </motion.div>
 
             {/* Trusted by */}
             <div className="relative mt-12 sm:mt-20">
-                <p className="mb-6 text-xs text-muted-foreground sm:mb-8 sm:text-sm">Trusted by teams & creators worldwide</p>
+                <p className="mb-6 text-xs text-muted-foreground sm:mb-8 sm:text-sm">The preferred choice for deep work and high-output creators</p>
                 <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8">
-                    {["Basecamp", "Linear", "Figma", "Vercel", "Stripe", "Notion", "Raycast", "Arc"].map(
+                    {["Privacy", "Speed", "Templates", "Offline", "Local-First", "Markdown", "Blocks", "Custom"].map(
                         (brand) => (
                             <motion.span
                                 key={brand}

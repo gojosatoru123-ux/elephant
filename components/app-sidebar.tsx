@@ -55,7 +55,7 @@ const AppSidebar = () => {
   ];
 
   const bottomNavItems = [
-    { id: "shared", icon: Share2, label: "Shared", href: "/shared" },
+    // { id: "shared", icon: Share2, label: "Shared", href: "/shared" },
     { id: "setting", icon: Settings, label: "Settings", href: "/settings" },
   ];
 

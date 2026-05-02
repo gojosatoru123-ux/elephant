@@ -4,9 +4,9 @@ import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
 
 const stats = [
-    { value: "99%", label: "Uptime Offline", color: "border-[hsl(var(--green-badge))] bg-[hsl(var(--green-light))]" },
-    { value: "4.9", label: "App Store Rating", color: "border-accent bg-[hsl(var(--yellow-light))]" },
-    { value: "50k+", label: "Active Users", color: "border-[hsl(var(--green-badge))] bg-[hsl(var(--mint-bg))]" },
+    { value: "0ms", label: "Input Latency", color: "border-[hsl(var(--green-badge))] bg-[hsl(var(--green-light))]" },
+    { value: "50+", label: "Power Blocks", color: "border-accent bg-[hsl(var(--yellow-light))]" },
+    { value: "100%", label: "Data Ownership", color: "border-[hsl(var(--green-badge))] bg-[hsl(var(--mint-bg))]" },
 ];
 
 const SpiralSVG = ({ className }: { className?: string }) => (
@@ -41,19 +41,12 @@ const SocialStatsSection = () => {
                         className="text-center md:text-left"
                     >
                         <span className="inline-flex items-center rounded-full bg-[hsl(var(--green-badge))]/15 px-3 py-1 text-xs font-medium text-[hsl(var(--green-badge))] border border-[hsl(var(--green-badge))]/20">
-                            BY THE NUMBERS
+                            PERFORMANCE METRICS
                         </span>
-                        <h3 className="mt-4 text-2xl font-bold text-foreground sm:text-3xl">Rated #1 offline note-taking app</h3>
+                        <h3 className="mt-4 text-2xl font-bold text-foreground sm:text-3xl md:text-4xl">Engineered for the elite 1% of creators</h3>
                         <p className="mt-3 mx-auto max-w-sm text-sm text-muted-foreground sm:text-base md:mx-0">
-                            Packed with mind maps, kanban boards, databases, and rich formatting — all working without internet.
+                            We traded the cloud for speed. By running everything on your local hardware, we've eliminated the friction between your thoughts and the screen.
                         </p>
-                        <motion.a
-                            href="#"
-                            whileHover={{ x: 4 }}
-                            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[hsl(var(--green-badge))] transition-all duration-200 hover:gap-2"
-                        >
-                            Learn More <ArrowRight className="h-4 w-4" />
-                        </motion.a>
                     </motion.div>
 
                     <motion.div
@@ -76,7 +69,7 @@ const SocialStatsSection = () => {
                                 <div className={`flex h-16 w-16 items-center justify-center rounded-full border-2 text-lg font-bold mx-auto transition-all duration-300 hover:shadow-xl sm:h-24 sm:w-24 sm:text-2xl ${stat.color}`}>
                                     {stat.value}
                                 </div>
-                                <p className="mt-2 text-xs text-muted-foreground sm:mt-3 sm:text-sm">{stat.label}</p>
+                                <p className="mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-tight sm:mt-3 sm:text-xs">{stat.label}</p>
                             </motion.div>
                         ))}
                     </motion.div>

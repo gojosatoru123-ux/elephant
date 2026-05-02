@@ -3,11 +3,11 @@ import { motion } from "framer-motion";
 import { Shield, Lock, EyeOff, Server, XCircle, CheckCircle2, Fingerprint, WifiOff } from "lucide-react";
 
 const privacyChecks = [
-    { label: "Local-first storage", status: true, icon: WifiOff },
-    { label: "End-to-end encryption", status: true, icon: Lock },
-    { label: "Zero-knowledge architecture", status: true, icon: EyeOff },
-    { label: "Server access to notes", status: false, icon: Server },
-    { label: "Third-party data sharing", status: false, icon: XCircle },
+    { label: "Storage on your device", status: true, icon: WifiOff },
+    { label: "Total access control", status: true, icon: Lock },
+    { label: "Hidden from everyone else", status: true, icon: EyeOff },
+    { label: "Internet company access", status: false, icon: Server },
+    { label: "Sharing with advertisers", status: false, icon: XCircle },
 ];
 
 const PrivacyDashboardMockup = () => (
@@ -15,7 +15,7 @@ const PrivacyDashboardMockup = () => (
         <div className="flex items-center justify-between border-b border-border/30 bg-[hsl(var(--green-badge))]/5 px-4 py-3">
             <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-[hsl(var(--green-badge))]" />
-                <span className="text-xs font-semibold text-foreground">Privacy Dashboard</span>
+                <span className="text-xs font-semibold text-foreground">Safety Check</span>
             </div>
             <div className="rounded-full bg-[hsl(var(--green-badge))]/15 px-2.5 py-1">
                 <span className="text-[10px] font-semibold text-[hsl(var(--green-badge))]">Score: 100%</span>
@@ -35,7 +35,7 @@ const PrivacyDashboardMockup = () => (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <Fingerprint className="h-5 w-5 text-[hsl(var(--green-badge))] mb-1" />
                         <span className="text-2xl font-bold text-foreground">100</span>
-                        <span className="text-[8px] text-muted-foreground">Privacy Score</span>
+                        <span className="text-[8px] text-muted-foreground">Safety Score</span>
                     </div>
                 </motion.div>
             </div>
@@ -56,8 +56,8 @@ const PrivacyDashboardMockup = () => (
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 1.2 }}
                 className="rounded-xl bg-linear-to-r from-[hsl(var(--green-badge))]/10 to-accent/10 p-3 border border-[hsl(var(--green-badge))]/10 text-center">
                 <Lock className="h-4 w-4 text-[hsl(var(--green-badge))] mx-auto mb-1" />
-                <p className="text-[10px] font-semibold text-foreground">AES-256 Encryption</p>
-                <p className="text-[8px] text-muted-foreground">Military-grade protection for all your notes</p>
+                <p className="text-[10px] font-semibold text-foreground">Personal Lockbox</p>
+                <p className="text-[8px] text-muted-foreground">Everything is locked and stored only on your machine</p>
             </motion.div>
         </div>
     </motion.div>
