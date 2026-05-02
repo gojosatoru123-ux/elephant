@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
 };
@@ -40,6 +40,11 @@ export const metadata: Metadata = {
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent", // Options: "default", "black", "black-translucent"
+    title: "Ploopus",
   },
   openGraph: {
     title: "Ploopus",
