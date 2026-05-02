@@ -100,6 +100,30 @@ const Settings = () => {
         finally { setIsExporting(false); }
     };
 
+    const restoreMediaFile = async (fileName: string, zipFile: JSZip.JSZipObject) => {
+        try {
+            const root = await navigator.storage.getDirectory();
+            const mediaDir = await root.getDirectoryHandle("media", { create: true });
+
+            // Check if file already exists
+            try {
+                await mediaDir.getFileHandle(fileName);
+                return false; // Skip if exists
+            } catch {
+                const fileHandle = await mediaDir.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+
+                const content = await zipFile.async("blob");
+                await writable.write(content);
+                await writable.close();
+                return true; // New file added
+            }
+        } catch (err) {
+            console.error(`Failed to restore: ${fileName}`, err);
+            return false;
+        }
+    };
+
     const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -137,6 +161,9 @@ const Settings = () => {
 
             // 2. Load Current Local Manifest
             const root = await navigator.storage.getDirectory();
+            // Ensures directories exist so StorageEngine doesn't crash on an empty OPFS.
+            await root.getDirectoryHandle("notes", { create: true });
+            await root.getDirectoryHandle("media", { create: true });
             let currentManifest: Record<string, { id: string; dirty: boolean; ts: number }> = {};
             try {
                 const mHandle = await root.getFileHandle(MANIFEST_FILE);
@@ -147,7 +174,7 @@ const Settings = () => {
             }
 
             // --- LAYER 1: FOLDERS MERGE --- ✅
-            const existingFolderIds = new Set(folders.map(f => f.id));
+            const existingFolderIds = new Set((folders || []).map(f => f.id));
             const mergedFolders = [...folders];
             backupFolders.forEach(bFolder => {
                 if (!existingFolderIds.has(bFolder.id)) {
@@ -156,12 +183,15 @@ const Settings = () => {
             });
 
             // --- LAYER 2: NOTES & CONTENT MERGE ---
-            const currentMap = new Map(noteIndexes.map(n => [n.id, n]));
+            const currentMap = new Map((noteIndexes || []).map(n => [n.id, n]));
             // for notes 3 things can happen
             // 1. backup has a note but not present in local => add the backedup note to local
             // 2. backup has a note present at both places
             // 1. backup and local has same note => do nothing
             // 2. local is updated after backing up => conflict
+            let lastYieldTime = performance.now();
+            const yieldToBrowser = () => new Promise(resolve => requestAnimationFrame(resolve));
+            let notesProcessed = 0;
 
             for (const bNote of backupIndexes) {
                 const fileName = `${bNote.id}.json`;
@@ -188,14 +218,24 @@ const Settings = () => {
                             dirty: true // Force the sync engine to verify this file
                         };
 
-                        const status = 'added' as SyncStatus;
-
-                        setSyncLogs(prev => [
-                            { id: bNote.id, title: bNote.title || "Untitled", status },
-                            ...prev
-                        ].slice(0, 15));
-
+                        notesProcessed++;
                         currentMap.set(bNote.id, bNote);
+
+
+                        if (performance.now() - lastYieldTime > 50) {
+                            const status = 'added' as SyncStatus;
+                            setSyncLogs(prev => [
+                                { id: bNote.id, title: bNote.title || "Untitled", status },
+                                ...prev
+                            ].slice(0, 15));
+
+                            // 4. THE MAGIC KEY: 
+                            // We yield for a single animation frame. 
+                            // This forces the UI to render the new log line before the loop continues.
+
+                            await yieldToBrowser();
+                            lastYieldTime = performance.now();
+                        }
                     }
                 }
             }
@@ -244,6 +284,43 @@ const Settings = () => {
                 }
             });
 
+
+            // --- LAYER 4.5: MEDIA MERGE (UI-SAFE) --- 📸
+            const mediaFolder = zip.folder("media");
+            if (mediaFolder) {
+                const mediaFiles: { name: string; file: JSZip.JSZipObject }[] = [];
+
+                mediaFolder.forEach((relativePath, file) => {
+                    if (!file.dir) mediaFiles.push({ name: relativePath, file });
+                });
+
+                if (mediaFiles.length > 0) {
+                    let restoredCount = 0;
+
+                    for (const m of mediaFiles) {
+                        const isNew = await restoreMediaFile(m.name, m.file);
+                        if (isNew) restoredCount++;
+
+                        // Every 10 files, update the log so the user sees progress
+                        if (restoredCount % 10 === 0) {
+                            setSyncLogs(prev => [
+                                {
+                                    id: 'media-progress',
+                                    title: `Restoring media: ${restoredCount}/${mediaFiles.length} files...`,
+                                    status: 'syncing' as SyncStatus
+                                },
+                                ...prev.filter(log => log.id !== 'media-progress') // Replace old progress log
+                            ].slice(0, 15));
+                        }
+                    }
+
+                    setSyncLogs(prev => [
+                        { id: 'media-done', title: `Successfully restored ${restoredCount} new assets.`, status: 'added' as SyncStatus },
+                        ...prev
+                    ].slice(0, 15));
+                }
+            }
+
             // --- LAYER 5: STRUCTURAL FILES (INDEX & FOLDERS) ---
             // Preserve Drive IDs for the main collection files to avoid duplicate files on Drive
 
@@ -274,7 +351,7 @@ const Settings = () => {
             // 2. Small delay to ensure OPFS write-locks are released
             setTimeout(() => {
                 window.location.reload();
-            }, 500);
+            }, 1000);
 
         } catch (err) {
             console.error("Restore Error:", err);
