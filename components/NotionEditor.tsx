@@ -77,6 +77,8 @@ import { MediaUploader } from "./MediaUploader";
 import PersistentImage from "./PersistentImage";
 import PersistentVideo from "./PersistentVideo";
 import PersistentAudio from "./PersistentAudio";
+import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
+import MobileEditorToolbar from "./MobileEditorToolbar";
 
 interface NotionEditorProps {
   blocks: NoteBlock[];
@@ -139,6 +141,39 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const [showMenu, setShowMenu] = useState<string | null>(null);
   const [menuFilter, setMenuFilter] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // ✅
+  const isTouch = useIsTouchDevice();
+  const [isEditingFocus, setIsEditingFocus] = useState(false);
+
+  // Track whether any editable surface inside the editor currently owns focus,
+  // so the mobile toolbar only appears while the user is actively editing.
+  useEffect(() => {
+    if (!isTouch) return;
+    const onFocusIn = () => {
+      const el = document.activeElement as HTMLElement | null;
+      const editable =
+        !!el &&
+        (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA");
+      setIsEditingFocus(editable);
+      if (editable) {
+        const blockEl = el!.closest("[data-block-id]") as HTMLElement | null;
+        const id = blockEl?.getAttribute("data-block-id");
+        if (id) setActiveBlockId(id);
+      }
+    };
+    const onFocusOut = () => {
+      // Defer so focus moving between editables doesn't flicker the toolbar.
+      setTimeout(onFocusIn, 0);
+    };
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, [isTouch]);
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<{ url: string; caption?: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -453,7 +488,8 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       e.preventDefault();
       deleteBlock(block.id);
     }
-    if (e.key === "/" && isEmpty) {
+    // ✅
+    if (e.key === "/" && isEmpty && !isTouch) {
       e.preventDefault();
       setShowMenu(block.id);
       setMenuFilter("");
@@ -2186,6 +2222,21 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           />
         )}
       </AnimatePresence>
+
+      {/* Mobile / tablet editing toolbar — pinned above the on-screen keyboard.
+          On touch devices, ⌘+/ slash menu is unavailable, so this provides the
+          basic block conversions plus inline formatting. ✅*/}
+      {isTouch && (
+        <MobileEditorToolbar
+          isEditing={isEditingFocus}
+          onOpenBlockMenu={() => {
+            if (activeBlockId) {
+              setShowMenu(activeBlockId);
+              setMenuFilter("");
+            }
+          }}
+        />
+      )}
     </>
   );
 };
