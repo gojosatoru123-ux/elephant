@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
+export const runtime = 'edge';
+
 export async function proxy(request: NextRequest) {
 	const sessionCookie = getSessionCookie(request);
 
@@ -16,5 +18,4 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
 	matcher: ["/dashboard"], // Specify the routes the middleware applies to
-	runtime: 'edge',
 };
